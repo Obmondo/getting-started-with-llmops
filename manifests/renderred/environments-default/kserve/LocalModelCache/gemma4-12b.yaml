@@ -1,0 +1,12 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: LocalModelCache
+metadata:
+  labels:
+    app.tanka.grafana.com: kserve
+  name: gemma4-12b
+  namespace: ""
+spec:
+  modelSize: 12Gi
+  nodeGroups:
+  - gemma4-12b
+  sourceModelUri: hf://google/gemma-4-12B-it-qat-w4a16-ct

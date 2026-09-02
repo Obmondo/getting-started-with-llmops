@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: nvsentinel
+    app.kubernetes.io/version: v1.18.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: nvsentinel-v1.18.0
+  name: nvsentinel
+  namespace: nvsentinel
+spec:
+  namespaceSelector:
+    matchNames:
+    - nvsentinel
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /metrics
+    port: metrics
+  - interval: 30s
+    path: /metrics
+    port: cleanup-metrics
+  selector:
+    matchExpressions:
+    - key: app.kubernetes.io/instance
+      operator: In
+      values:
+      - nvsentinel

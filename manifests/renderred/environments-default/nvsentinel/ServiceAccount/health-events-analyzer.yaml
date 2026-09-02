@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: health-events-analyzer
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: health-events-analyzer-0.1.0
+  name: health-events-analyzer
+  namespace: nvsentinel

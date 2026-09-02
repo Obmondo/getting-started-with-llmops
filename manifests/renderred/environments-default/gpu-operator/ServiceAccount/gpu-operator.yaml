@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: gpu-operator
+    app.kubernetes.io/instance: gpu-operator
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: gpu-operator
+    app.kubernetes.io/version: v26.3.0
+    app.tanka.grafana.com: gpu-operator
+    helm.sh/chart: gpu-operator-v26.3.0
+  name: gpu-operator
+  namespace: gpu-operator

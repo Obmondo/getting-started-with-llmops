@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: localpv-provisioner
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: localpv-provisioner
+    chart: localpv-provisioner-4.5.1
+    component: localpv-provisioner
+    heritage: Helm
+    openebs.io/component-name: openebs-localpv-provisioner
+    release: localpv-provisioner
+  name: localpv-provisioner
+  namespace: localpv-provisioner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: localpv-provisioner
+      component: localpv-provisioner
+      release: localpv-provisioner
+  strategy:
+    rollingUpdate: null
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: localpv-provisioner
+        chart: localpv-provisioner-4.5.1
+        component: localpv-provisioner
+        heritage: Helm
+        name: openebs-localpv-provisioner
+        openebs.io/component-name: openebs-localpv-provisioner
+        openebs.io/logging: "true"
+        release: localpv-provisioner
+    spec:
+      containers:
+      - env:
+        - name: OPENEBS_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OPENEBS_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: OPENEBS_IO_ENABLE_ANALYTICS
+          value: "true"
+        - name: OPENEBS_IO_ANALYTICS_STATE_CM
+          value: localpv-provisioner-analytics-state
+        - name: OPENEBS_IO_BASE_PATH
+          value: /var/openebs/local
+        - name: OPENEBS_IO_WORKER_THREADS
+          value: "4"
+        - name: OPENEBS_IO_HELPER_IMAGE
+          value: docker.io/openebs/linux-utils:4.5.0
+        - name: OPENEBS_IO_HELPER_POD_HOST_NETWORK
+          value: "false"
+        - name: OPENEBS_IO_INSTALLER_TYPE
+          value: localpv-charts-helm-helperpod
+        - name: OPENEBS_IO_HELPER_POD_TIMEOUT_SECS
+          value: "120"
+        - name: LEADER_ELECTION_ENABLED
+          value: "true"
+        image: docker.io/openebs/provisioner-localpv:4.5.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - test `pgrep -c "^provisioner-loc.*"` = 1
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        name: localpv-provisioner
+        resources: null
+      securityContext: {}
+      serviceAccountName: localpv-provisioner
+      tolerations:
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 5
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 5

@@ -1,0 +1,34 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: LocalModelNodeGroup
+metadata:
+  labels:
+    app.tanka.grafana.com: kserve
+  name: gemma4-12b
+  namespace: ""
+spec:
+  persistentVolumeClaimSpec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 12Gi
+    storageClassName: local-storage
+    volumeMode: Filesystem
+  persistentVolumeSpec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 12Gi
+    local:
+      path: /models
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kserve/localmodel
+            operator: In
+            values:
+            - worker
+    storageClassName: local-storage
+    volumeMode: Filesystem
+  storageLimit: 12Gi

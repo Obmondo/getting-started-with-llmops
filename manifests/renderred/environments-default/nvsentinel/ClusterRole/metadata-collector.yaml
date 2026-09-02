@@ -1,0 +1,25 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: metadata-collector
+    app.kubernetes.io/version: 1.0.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: metadata-collector-0.1.0
+  name: metadata-collector
+  namespace: nvsentinel
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/proxy
+  verbs:
+  - get

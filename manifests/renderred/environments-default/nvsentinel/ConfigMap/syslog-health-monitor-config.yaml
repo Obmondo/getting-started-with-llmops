@@ -1,0 +1,77 @@
+apiVersion: v1
+data:
+  cancellations.toml: |2
+
+    [[checks]]
+      name    = "SysLogsXIDError"
+      enabled = true
+
+      [[checks.cancellations]]
+        onErrorCode      = "162"
+        cancelErrorCodes = ["163"]
+  nic-driver.toml: |2
+
+    [[nicDriverDetection.patterns]]
+    name = "cmd_exec_timeout"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "health_poll_failed"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "unrecoverable_err"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "netdev_watchdog"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "pci_power_insufficient"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "port_module_high_temp"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "access_reg_failed"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "module_unplugged"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "mlx5_tx_timeout_detected"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "mlx5_rx_timeout_detected"
+    enabled = false
+
+
+    [[nicDriverDetection.patterns]]
+    name = "mlx5_napi_soft_lockup"
+    enabled = false
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: syslog-health-monitor
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: syslog-health-monitor-0.1.0
+  name: syslog-health-monitor-config
+  namespace: nvsentinel

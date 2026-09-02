@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: fault-quarantine
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: fault-quarantine-0.1.0
+  name: fault-quarantine
+  namespace: nvsentinel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nvsentinel
+      app.kubernetes.io/name: fault-quarantine
+  template:
+    metadata:
+      annotations:
+        checksum/config: b90ebe6a4c42571997122ce8cb83b9f5b1fed734a6d2c07248540f64925d4366
+      labels:
+        app.kubernetes.io/instance: nvsentinel
+        app.kubernetes.io/name: fault-quarantine
+    spec:
+      containers:
+      - args:
+        - --metrics-port=2112
+        - --dry-run=false
+        - --tls-enabled=false
+        - --circuit-breaker-enabled=true
+        - --gpu-node-label=nvidia.com/gpu.present=true
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LOG_LEVEL
+          value: info
+        - name: APP_NAME
+          value: fault-quarantine
+        envFrom:
+        - configMapRef:
+            name: nvsentinel-datastore-config
+            optional: true
+        image: ghcr.io/nvidia/nvsentinel/fault-quarantine:v1.18.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: metrics
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+        name: fault-quarantine
+        ports:
+        - containerPort: 2112
+          name: metrics
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: metrics
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        securityContext:
+          runAsGroup: 1001
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /etc/config/config.toml
+          name: config-volume
+          subPath: config.toml
+      restartPolicy: Always
+      serviceAccountName: fault-quarantine
+      volumes:
+      - configMap:
+          items:
+          - key: config.toml
+            path: config.toml
+          name: fault-quarantine
+        name: config-volume
+      - name: mongo-app-client-cert
+        secret:
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
+          - key: ca.crt
+            path: ca.crt
+          optional: true
+          secretName: mongo-app-client-cert-secret

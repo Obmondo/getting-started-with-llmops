@@ -1,0 +1,11 @@
+apiVersion: ollama.ayaka.io/v1
+kind: Model
+metadata:
+  labels:
+    app.tanka.grafana.com: ollama-operator
+  name: gemma4-26b
+  namespace: ollama-operator-system
+spec:
+  image: gemma4:26b
+  persistentVolume:
+    accessMode: ReadWriteOnce

@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: localpv-provisioner
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: localpv-provisioner
+    chart: localpv-provisioner-4.5.1
+    component: localpv-provisioner
+    heritage: Helm
+    openebs.io/component-name: openebs-localpv-provisioner
+    release: localpv-provisioner
+  name: localpv-provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: localpv-provisioner
+subjects:
+- kind: ServiceAccount
+  name: localpv-provisioner
+  namespace: localpv-provisioner

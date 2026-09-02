@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  labels:
+    app.tanka.grafana.com: hindsight
+  name: hindsight
+  namespace: hindsight
+spec:
+  bootstrap:
+    initdb:
+      database: hindsight
+      owner: hindsight
+      secret:
+        name: storage-backend-credentials
+  imageName: ghcr.io/cloudnative-pg/postgresql:18-minimal-trixie
+  instances: 1
+  postgresql:
+    extensions:
+    - image:
+        reference: ghcr.io/cloudnative-pg/pgvector:0.8.6-18-trixie
+      name: pgvector
+  storage:
+    size: 5Gi

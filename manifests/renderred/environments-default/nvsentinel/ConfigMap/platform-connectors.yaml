@@ -1,0 +1,39 @@
+apiVersion: v1
+data:
+  config.json: |
+    {
+      "enableK8sPlatformConnector": "true",
+      "K8sConnectorQps": 5.00,
+      "K8sConnectorBurst": 10,
+      "MaxNodeConditionMessageLength": 1024,
+      "CompactedHealthEventMsgLen": 72,
+      "StoreConnectorMaxRetries": 3,
+      "enableMongoDBStorePlatformConnector": "false",
+      "enablePostgresDBStorePlatformConnector": "true"
+      ,"enableGRPCSinkConnector": "false"
+      ,"GRPCSinkTarget": ""
+      ,"GRPCSinkConnectorMaxRetries": 3
+      ,"GRPCSinkTokenPath": ""
+      ,"pipeline": [{"config":"/etc/config/metadata.toml","enabled":false,"name":"MetadataAugmentor"},{"config":"/etc/config/overrides.toml","enabled":false,"name":"OverrideTransformer"},{"config":"/etc/config/dedup.toml","enabled":false,"name":"Deduplicator"}]
+    }
+  dedup.toml: |
+    suppressionWindow = "3m"
+    cleanupInterval = "60s"
+    includeChecks = ["SysLogsXIDError","SysLogsSXIDError"]
+  metadata.toml: |
+    cacheSize = 50
+    cacheTTL = "3600s"
+    allowedLabels = ["topology.kubernetes.io/zone","topology.kubernetes.io/region","node.kubernetes.io/instance-type","nvidia.com/cuda.driver-version.major","nvidia.com/cuda.driver-version.minor","nvidia.com/cuda.driver-version.revision","nvidia.com/cuda.driver-version.full","nvidia.com/cuda.runtime-version.major","nvidia.com/cuda.runtime-version.minor","nvidia.com/cuda.runtime-version.full","topology.k8s.aws/capacity-block-id","topology.k8s.aws/network-node-layer-1","topology.k8s.aws/network-node-layer-2","topology.k8s.aws/network-node-layer-3","oci.oraclecloud.com/host.id","oci.oraclecloud.com/host.network_block_id","oci.oraclecloud.com/host.rack_id","oci.oraclecloud.com/host.serial_number","cloud.google.com/gce-topology-block","cloud.google.com/gce-topology-host","cloud.google.com/gce-topology-subblock","network.topology.nvidia.com/accelerator","network.topology.nvidia.com/leaf","network.topology.nvidia.com/spine","network.topology.nvidia.com/core"]
+  overrides.toml: |
+    enabled = false
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: nvsentinel
+    app.kubernetes.io/version: v1.18.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: nvsentinel-v1.18.0
+  name: platform-connectors
+  namespace: nvsentinel

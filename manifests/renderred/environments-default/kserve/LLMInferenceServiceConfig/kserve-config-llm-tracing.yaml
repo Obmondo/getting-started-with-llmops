@@ -1,0 +1,14 @@
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceServiceConfig
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: kserve
+  name: kserve-config-llm-tracing
+  namespace: kserve
+spec:
+  tracing:
+    exporter: otlp
+    exporterEndpoint: http://otel-collector:4317
+    sampler: parentbased_traceidratio
+    samplerArg: "0.05"

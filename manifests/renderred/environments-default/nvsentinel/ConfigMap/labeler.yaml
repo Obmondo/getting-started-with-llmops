@@ -1,0 +1,39 @@
+apiVersion: v1
+data:
+  expected-device-counts.toml: |
+    enabled = true
+
+    [[classes]]
+    name = "gpu"
+    enabled = true
+    groupingLabels = ["node.kubernetes.io/instance-type", "nvidia.com/gpu.product"]
+    currentExpression = '''
+    int(node.metadata.labels['nvidia.com/gpu.count'])
+    '''
+
+    [classes.labels]
+    current = "nvsentinel.dgxc.nvidia.com/gpu.count.current"
+    expected = "nvsentinel.dgxc.nvidia.com/gpu.count.expected"
+
+    [[classes]]
+    name = "nic"
+    enabled = true
+    groupingLabels = ["node.kubernetes.io/instance-type"]
+    currentExpression = '''
+    int(node.status.allocatable['nvidia.com/mlnxnics'])
+    '''
+
+    [classes.labels]
+    current = "nvsentinel.dgxc.nvidia.com/nic.count.current"
+    expected = "nvsentinel.dgxc.nvidia.com/nic.count.expected"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: labeler
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: labeler-0.1.0
+  name: labeler
+  namespace: nvsentinel

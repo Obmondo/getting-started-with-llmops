@@ -1,0 +1,40 @@
+apiVersion: v1
+data:
+  CA_CERT_MOUNT_TIMEOUT_TOTAL_SECONDS: "360"
+  CA_CERT_READ_INTERVAL_SECONDS: "5"
+  DATASTORE_DATABASE: health-events
+  DATASTORE_HOST: health-events-rw.nvsentinel.svc.cluster.local
+  DATASTORE_PORT: "5432"
+  DATASTORE_PROVIDER: postgresql
+  DATASTORE_SSLMODE: disable
+  DATASTORE_USERNAME: nvsentinel
+  MONGODB_CHANGE_STREAM_RETRY_DEADLINE_SECONDS: "300"
+  MONGODB_CHANGE_STREAM_RETRY_INTERVAL_SECONDS: "5"
+  MONGODB_COLLECTION_EXPIRY_SECONDS: "2592000"
+  MONGODB_COLLECTION_NAME: HealthEvents
+  MONGODB_DATABASE_NAME: health-events
+  MONGODB_MAINTENANCE_EVENT_COLLECTION_NAME: MaintenanceEvents
+  MONGODB_PING_INTERVAL_SECONDS: "5"
+  MONGODB_PING_TIMEOUT_TOTAL_SECONDS: "30"
+  MONGODB_TOKEN_COLLECTION_NAME: ResumeTokens
+  MONGODB_URI: ""
+  UNPROCESSED_EVENTS_METRIC_UPDATE_INTERVAL_SECONDS: "25"
+  datastore.yaml: |
+    provider: "postgresql"
+    connection:
+      host: "health-events-rw.nvsentinel.svc.cluster.local"
+      port: 5432
+      database: "health-events"
+      username: "nvsentinel"
+      sslmode: "disable"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: nvsentinel
+    app.kubernetes.io/version: v1.18.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: nvsentinel-v1.18.0
+  name: nvsentinel-datastore-config
+  namespace: nvsentinel

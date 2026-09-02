@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: fault-quarantine
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: fault-quarantine-0.1.0
+  name: fault-quarantine
+  namespace: nvsentinel
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fault-quarantine
+subjects:
+- kind: ServiceAccount
+  name: fault-quarantine
+  namespace: nvsentinel

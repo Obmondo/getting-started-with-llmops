@@ -1,0 +1,56 @@
+directory: charts
+repositories:
+- name: cilium
+  url: https://helm.cilium.io/
+- name: stable
+  url: https://charts.helm.sh/stable
+- name: nvidia
+  url: https://helm.ngc.nvidia.com/nvidia
+- name: nvidia-oci
+  url: oci://ghcr.io/nvidia
+- name: cloudnative-pg
+  url: https://cloudnative-pg.github.io/charts
+- name: hami-dra
+  url: https://project-hami.github.io/HAMi-DRA
+- name: kserve
+  url: oci://ghcr.io/kserve/charts
+- name: openebs
+  url: https://openebs.github.io/dynamic-localpv-provisioner
+- name: vectorize
+  url: oci://ghcr.io/vectorize-io/charts
+- name: jetstack
+  url: oci://quay.io/jetstack/charts
+- name: prometheus-community
+  url: https://prometheus-community.github.io/helm-charts
+requires:
+- chart: cilium/cilium
+  version: 1.19.4
+- chart: nvidia/gpu-operator
+  version: v26.3.0
+- chart: nvidia-oci/nvsentinel
+  version: v1.18.0
+- chart: cloudnative-pg/cloudnative-pg
+  version: 0.28.2
+- chart: hami-dra/hami-dra
+  version: 0.2.1
+- chart: kserve/kserve-llmisvc-crd
+  version: v0.20.0
+- chart: kserve/kserve-llmisvc-resources
+  version: v0.20.0
+- chart: kserve/kserve-runtime-configs
+  version: v0.20.0
+- chart: kserve/kserve-crd
+  version: v0.20.0
+- chart: kserve/kserve-localmodel-crd
+  version: v0.20.0
+- chart: kserve/kserve-localmodel-resources
+  version: v0.20.0
+- chart: openebs/localpv-provisioner
+  version: 4.5.1
+- chart: vectorize/hindsight
+  version: 0.9.1
+- chart: jetstack/cert-manager
+  version: 1.20.2
+- chart: prometheus-community/kube-prometheus-stack
+  version: 86.1.0
+version: 1

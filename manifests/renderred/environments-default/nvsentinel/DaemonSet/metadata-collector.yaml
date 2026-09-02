@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: metadata-collector
+    app.kubernetes.io/version: 1.0.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: metadata-collector-0.1.0
+  name: metadata-collector
+  namespace: nvsentinel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nvsentinel
+      app.kubernetes.io/name: metadata-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: nvsentinel
+        app.kubernetes.io/name: metadata-collector
+    spec:
+      containers:
+      - args:
+        - --output-path=/var/lib/nvsentinel/gpu_metadata.json
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: KUBELET_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        image: ghcr.io/nvidia/nvsentinel/metadata-collector:v1.18.0
+        imagePullPolicy: IfNotPresent
+        name: metadata-collector
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          privileged: true
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /var/lib/nvsentinel
+          name: output
+        - mountPath: /sys
+          name: sys
+          readOnly: true
+        - mountPath: /var/lib/kubelet/pod-resources
+          name: pod-gpu-resources
+          readOnly: true
+      hostNetwork: true
+      hostPID: true
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+        nvsentinel.dgxc.nvidia.com/driver.installed: "true"
+      runtimeClassName: nvidia
+      serviceAccountName: metadata-collector
+      tolerations:
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /var/lib/nvsentinel
+          type: DirectoryOrCreate
+        name: output
+      - hostPath:
+          path: /sys
+          type: Directory
+        name: sys
+      - hostPath:
+          path: /var/lib/kubelet/pod-resources
+          type: Directory
+        name: pod-gpu-resources
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 5%
+    type: RollingUpdate

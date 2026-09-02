@@ -1,0 +1,10 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: kserve
+  name: selfsigned-issuer
+  namespace: kserve
+spec:
+  selfSigned: {}

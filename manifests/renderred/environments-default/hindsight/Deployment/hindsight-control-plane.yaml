@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/instance: hindsight
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/version: 0.9.1
+    app.tanka.grafana.com: hindsight
+    helm.sh/chart: hindsight-0.9.1
+  name: hindsight-control-plane
+  namespace: hindsight
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: control-plane
+      app.kubernetes.io/instance: hindsight
+      app.kubernetes.io/name: hindsight
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/component: control-plane
+        app.kubernetes.io/instance: hindsight
+        app.kubernetes.io/name: hindsight
+    spec:
+      containers:
+      - env:
+        - name: HINDSIGHT_CP_DATAPLANE_API_URL
+          value: http://hindsight-api:8888
+        - name: HINDSIGHT_CP_HOSTNAME
+          value: 0.0.0.0
+        - name: HINDSIGHT_CP_PORT
+          value: "3000"
+        - name: NODE_ENV
+          value: production
+        envFrom:
+        - secretRef:
+            name: storage-backend-credentials
+        image: ghcr.io/vectorize-io/hindsight-control-plane:0.9.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          tcpSocket:
+            port: 3000
+          timeoutSeconds: 5
+        name: control-plane
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          tcpSocket:
+            port: 3000
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: hindsight

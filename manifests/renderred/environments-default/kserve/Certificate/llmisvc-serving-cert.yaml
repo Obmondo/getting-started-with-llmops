@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: kserve
+  name: llmisvc-serving-cert
+  namespace: kserve
+spec:
+  commonName: llmisvc-webhook-server-service.kserve.svc
+  dnsNames:
+  - llmisvc-webhook-server-service.kserve.svc
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: llmisvc-webhook-server-cert

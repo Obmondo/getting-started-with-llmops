@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: api
+    app.kubernetes.io/instance: hindsight
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/version: 0.9.1
+    app.tanka.grafana.com: hindsight
+    helm.sh/chart: hindsight-0.9.1
+  name: hindsight-api
+  namespace: hindsight
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api
+      app.kubernetes.io/instance: hindsight
+      app.kubernetes.io/name: hindsight
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/component: api
+        app.kubernetes.io/instance: hindsight
+        app.kubernetes.io/name: hindsight
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgres-password
+              name: storage-backend-credentials
+        - name: HINDSIGHT_API_DATABASE_URL
+          value: postgresql://hindsight:$(POSTGRES_PASSWORD)@hindsight-rw.hindsight.svc.cluster.local:5432/hindsight
+        - name: HINDSIGHT_API_PORT
+          value: "8888"
+        - name: HINDSIGHT_API_LLM_API_KEY
+          value: not-enforced
+        - name: HINDSIGHT_API_LLM_BASE_URL
+          value: http://gemma4-12b-kserve-workload-svc.kserve.svc.cluster.local:8000/v1
+        - name: HINDSIGHT_API_LLM_MODEL
+          value: google/gemma-4-12B-it-qat-w4a16-ct
+        - name: HINDSIGHT_API_LLM_PROVIDER
+          value: openai
+        envFrom:
+        - secretRef:
+            name: storage-backend-credentials
+        image: ghcr.io/vectorize-io/hindsight-api:0.9.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/live
+            port: 8888
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: api
+        ports:
+        - containerPort: 8888
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: hindsight

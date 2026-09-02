@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: gpu-health-monitor
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: gpu-health-monitor-0.1.0
+  name: gpu-health-monitor-dcgm-3.x
+  namespace: nvsentinel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nvsentinel
+      app.kubernetes.io/name: gpu-health-monitor
+  template:
+    metadata:
+      annotations:
+        checksum/config: 8348c311e991b9a5a1f7256f099915d388b066fb298d2492fd3135826b9f1294
+      labels:
+        app.kubernetes.io/instance: nvsentinel
+        app.kubernetes.io/name: gpu-health-monitor
+    spec:
+      containers:
+      - args:
+        - --config-file
+        - /etc/dcgmhealth/config.ini
+        - --dcgm-error-mapping-config-file
+        - /etc/dcgmhealth/dcgmerrorsmapping.csv
+        - --dcgm-addr
+        - nvidia-dcgm.gpu-operator.svc:5555
+        - --dcgm-mode
+        - remote
+        - --port
+        - "2112"
+        - --verbose
+        - "False"
+        - --state-file
+        - /var/run/statefile
+        - --dcgm-k8s-service-enabled
+        - "true"
+        - --metadata-path
+        - /var/lib/nvsentinel/gpu_metadata.json
+        - --processing-strategy
+        - EXECUTE_REMEDIATION
+        - --suppress-nvlink-down-unbridged-pcie
+        - "False"
+        command:
+        - gpu_health_monitor
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: ghcr.io/nvidia/nvsentinel/gpu-health-monitor:v1.18.0-dcgm-3.x
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 2112
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 3
+        name: gpu-health-monitor
+        ports:
+        - containerPort: 2112
+          name: metrics
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /metrics
+            port: 2112
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /etc/dcgmhealth
+          name: config-vol
+        - mountPath: /var/run/
+          name: var-run-vol
+        - mountPath: /var/lib/nvsentinel
+          name: gpu-metadata
+          readOnly: true
+      nodeSelector:
+        nvsentinel.dgxc.nvidia.com/dcgm.version: 3.x
+      tolerations:
+      - operator: Exists
+      volumes:
+      - configMap:
+          defaultMode: 511
+          name: gpu-health-monitor
+        name: config-vol
+      - hostPath:
+          path: /var/run/nvsentinel
+          type: Directory
+        name: var-run-vol
+      - hostPath:
+          path: /var/lib/nvsentinel
+          type: DirectoryOrCreate
+        name: gpu-metadata
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 5%
+    type: RollingUpdate

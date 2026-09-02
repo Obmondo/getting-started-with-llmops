@@ -1,0 +1,24 @@
+apiVersion: v1
+data:
+  nfd-worker.conf: |-
+    sources:
+      pci:
+        deviceClassWhitelist:
+        - "02"
+        - "0200"
+        - "0207"
+        - "0300"
+        - "0302"
+        deviceLabelFields:
+        - vendor
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: gpu-operator
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/version: v0.18.3
+    app.tanka.grafana.com: gpu-operator
+    helm.sh/chart: node-feature-discovery-0.18.3
+  name: gpu-operator-node-feature-discovery-worker-conf
+  namespace: gpu-operator

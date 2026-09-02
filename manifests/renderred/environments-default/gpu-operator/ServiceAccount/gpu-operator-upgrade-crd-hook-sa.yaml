@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+    helm.sh/hook-weight: "0"
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: gpu-operator
+  name: gpu-operator-upgrade-crd-hook-sa
+  namespace: gpu-operator

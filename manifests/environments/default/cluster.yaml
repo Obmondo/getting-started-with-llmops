@@ -1,0 +1,49 @@
+apiVersion: kubeone.k8c.io/v1beta2
+kind: KubeOneCluster
+
+name: learning-llms
+
+cloudProvider:
+  none: {}
+
+versions:
+  kubernetes: v1.35.0
+
+apiEndpoint:
+  host: 10.0.2.15
+  port: 6443
+  alternativeNames:
+    - 92.107.248.150
+    - 127.0.0.1
+
+controlPlane:
+  hosts:
+    - sshPort: 40054
+      sshUsername: root
+      sshPrivateKeyFile: ./.key
+      publicAddress: 92.107.248.150
+      privateAddress: 10.0.2.15
+
+      # Remove no-schedule taints from the single conrol-plane node.
+      taints: []
+
+      labels:
+        # The model caching jobs are scheduled by KServe, to nodes which have this label.
+        "kserve/localmodel": "worker"
+
+clusterNetwork:
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+  cni:
+    external: {}
+
+machineController:
+  deploy: false
+
+operatingSystemManager:
+  deploy: false
+
+staticWorkers:
+  hosts:
+
+dynamicWorkers: []

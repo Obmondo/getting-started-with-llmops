@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: ollama-operator
+    app.kubernetes.io/instance: leader-election-rolebinding
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: rolebinding
+    app.kubernetes.io/part-of: ollama-operator
+    app.tanka.grafana.com: ollama-operator
+  name: ollama-operator-leader-election-rolebinding
+  namespace: ollama-operator-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ollama-operator-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: ollama-operator-controller-manager
+  namespace: ollama-operator-system

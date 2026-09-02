@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: health-events-analyzer
+    app.kubernetes.io/version: 1.16.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: health-events-analyzer-0.1.0
+  name: health-events-analyzer
+  namespace: nvsentinel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nvsentinel
+      app.kubernetes.io/name: health-events-analyzer
+  template:
+    metadata:
+      annotations:
+        checksum/config: 0dd10110d1f5b3abcf4dd2e1d294382318131dd9f0fa63d0a01bb75cbb989600
+      labels:
+        app.kubernetes.io/instance: nvsentinel
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: health-events-analyzer
+        app.kubernetes.io/version: 1.16.0
+        helm.sh/chart: health-events-analyzer-0.1.0
+    spec:
+      containers:
+      - args:
+        - --metrics-port=2112
+        - --tls-enabled=false
+        - --processing-strategy=EXECUTE_REMEDIATION
+        env:
+        - name: LOG_LEVEL
+          value: info
+        - name: APP_NAME
+          value: health-events-analyzer
+        envFrom:
+        - configMapRef:
+            name: nvsentinel-datastore-config
+            optional: true
+        image: ghcr.io/nvidia/nvsentinel/health-events-analyzer:v1.18.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: metrics
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+        name: health-events-analyzer
+        ports:
+        - containerPort: 2112
+          name: metrics
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: metrics
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        securityContext:
+          runAsGroup: 1001
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /etc/config/config.toml
+          name: config-volume
+          subPath: config.toml
+        - mountPath: /var/run/
+          name: var-run-vol
+      restartPolicy: Always
+      serviceAccountName: health-events-analyzer
+      volumes:
+      - configMap:
+          items:
+          - key: config.toml
+            path: config.toml
+          name: health-events-analyzer-config
+        name: config-volume
+      - hostPath:
+          path: /var/run/nvsentinel
+          type: DirectoryOrCreate
+        name: var-run-vol
+      - name: mongo-app-client-cert
+        secret:
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
+          - key: ca.crt
+            path: ca.crt
+          optional: true
+          secretName: mongo-app-client-cert-secret

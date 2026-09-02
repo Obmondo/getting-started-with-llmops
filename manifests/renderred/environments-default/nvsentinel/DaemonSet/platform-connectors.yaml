@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: nvsentinel
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: nvsentinel
+    app.kubernetes.io/version: v1.18.0
+    app.tanka.grafana.com: nvsentinel
+    helm.sh/chart: nvsentinel-v1.18.0
+  name: platform-connectors
+  namespace: nvsentinel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nvsentinel
+      app.kubernetes.io/name: nvsentinel
+  template:
+    metadata:
+      annotations:
+        checksum/config: 4d8e1ab01aa6cafed102337e7409e487ed2dcd37916ac598475ce42059618732
+      labels:
+        app.kubernetes.io/instance: nvsentinel
+        app.kubernetes.io/name: nvsentinel
+    spec:
+      containers:
+      - args:
+        - --config=/etc/config/config.json
+        - --metrics-port=2112
+        - --database-client-cert-mount-path=
+        - --socket=/var/run/nvsentinel.sock
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_LEVEL
+          value: info
+        - name: APP_NAME
+          value: platform-connector
+        - name: POSTGRESQL_CLIENT_CERT_MOUNT_PATH
+          value: null
+        envFrom:
+        - configMapRef:
+            name: nvsentinel-datastore-config
+            optional: true
+        image: ghcr.io/nvidia/nvsentinel/platform-connectors:v1.18.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: metrics
+          periodSeconds: 20
+          timeoutSeconds: 5
+        name: platform-connector
+        ports:
+        - containerPort: 2112
+          name: metrics
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: metrics
+          periodSeconds: 10
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsUser: 0
+        startupProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /healthz
+            port: metrics
+          periodSeconds: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/run
+          name: var-run-vol
+        - mountPath: /etc/config/
+          name: platform-connector-configmap
+      serviceAccountName: platform-connectors
+      tolerations:
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /var/run/nvsentinel
+          type: DirectoryOrCreate
+        name: var-run-vol
+      - configMap:
+          name: platform-connectors
+        name: platform-connector-configmap
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 5%
+    type: RollingUpdate

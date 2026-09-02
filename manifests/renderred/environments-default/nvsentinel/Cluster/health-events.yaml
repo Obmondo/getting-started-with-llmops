@@ -1,0 +1,15 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  labels:
+    app.tanka.grafana.com: nvsentinel
+  name: health-events
+  namespace: nvsentinel
+spec:
+  bootstrap:
+    initdb:
+      database: health-events
+      owner: nvsentinel
+  instances: 1
+  storage:
+    size: 5Gi

@@ -1,0 +1,12 @@
+/.direnv
+/.devenv
+
+*.key
+
+*.tar.gz
+
+manifests/charts/
+manifests/dist/
+vendor/
+
+kubeconfig.yaml

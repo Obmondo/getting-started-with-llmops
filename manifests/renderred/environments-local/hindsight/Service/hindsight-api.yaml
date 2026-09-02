@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: api
+    app.kubernetes.io/instance: hindsight
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/version: 0.9.1
+    app.tanka.grafana.com: hindsight
+    helm.sh/chart: hindsight-0.9.1
+  name: hindsight-api
+  namespace: hindsight
+spec:
+  ports:
+  - name: http
+    port: 8888
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: api
+    app.kubernetes.io/instance: hindsight
+    app.kubernetes.io/name: hindsight
+  type: ClusterIP
