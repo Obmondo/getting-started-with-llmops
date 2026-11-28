@@ -636,7 +636,7 @@ data:
        }
   agent: |-
     {
-        "image" : "kserve/agent:v0.20.0",
+        "image" : "kserve/agent:v0.21.0",
         "memoryRequest": "100Mi",
         "memoryLimit": "1Gi",
         "cpuRequest": "100m",
@@ -649,7 +649,7 @@ data:
     }
   batcher: |-
     {
-        "image" : "kserve/agent:v0.20.0",
+        "image" : "kserve/agent:v0.21.0",
         "memoryRequest": "1Gi",
         "memoryLimit": "1Gi",
         "cpuRequest": "1",
@@ -685,7 +685,7 @@ data:
     {
         "art": {
             "image" : "kserve/art-explainer",
-            "defaultImageVersion": "v0.20.0"
+            "defaultImageVersion": "v0.21.0"
         }
     }
   inferenceService: |-
@@ -721,14 +721,14 @@ data:
       "enabled": true,
       "jobNamespace": "kserve-localmodel-jobs",
       "jobTTLSecondsAfterFinished": 3600,
-      "defaultJobImage": "kserve/storage-initializer:v0.20.0",
+      "defaultJobImage": "kserve/storage-initializer:v0.21.0",
       "fsGroup": 1000,
       "reconcilationFrequencyInSecs": 60,
       "disableVolumeManagement": false
     }
   logger: |-
     {
-        "image" : "kserve/agent:v0.20.0",
+        "image" : "kserve/agent:v0.21.0",
         "memoryRequest": "100Mi",
         "memoryLimit": "1Gi",
         "cpuRequest": "100m",
@@ -754,7 +754,7 @@ data:
     }
   router: |-
     {
-        "image" : "kserve/router:v0.20.0",
+        "image" : "kserve/router:v0.21.0",
         "memoryRequest": "100Mi",
         "memoryLimit": "1Gi",
         "cpuRequest": "100m",
@@ -772,9 +772,9 @@ data:
     }
   storageInitializer: |-
     {
-        "image" : "kserve/storage-initializer:v0.20.0",
-        "memoryRequest": "100Mi",
-        "memoryLimit": "1Gi",
+        "image" : "kserve/storage-initializer:v0.21.0",
+        "memoryRequest": "2Gi",
+        "memoryLimit": "32Gi",
         "cpuRequest": "100m",
         "cpuLimit": "1",
         "caBundleConfigMapName": "",

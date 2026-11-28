@@ -175,6 +175,9 @@ spec:
     mode: kubevirt
   toolkit:
     enabled: true
+    env:
+    - name: NRI_MANAGEMENT_CDI_DEVICE_NAMESPACES
+      value: lmcache
     image: container-toolkit
     imagePullPolicy: IfNotPresent
     installDir: /usr/local/nvidia

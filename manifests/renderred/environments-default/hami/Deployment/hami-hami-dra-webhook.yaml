@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: hami
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hami
+    app.kubernetes.io/version: 0.2.4
+    app.tanka.grafana.com: hami
+    helm.sh/chart: hami-dra
+  name: hami-hami-dra-webhook
+  namespace: hami
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: hami
+      app.kubernetes.io/name: hami
+  template:
+    metadata:
+      annotations:
+        checksum/device-config: 7339ceab225d0ae36cff3bf951b2c3306c1718a4c9abad485d0103efe239acad
+      labels:
+        app.kubernetes.io/component: webhook
+        app.kubernetes.io/instance: hami
+        app.kubernetes.io/name: hami
+    spec:
+      containers:
+      - command:
+        - /bin/webhook
+        - --v=5
+        - --bind-address=0.0.0.0
+        - --secure-port=8443
+        - --cert-dir=/tls
+        - --tls-cert-file-name=tls.crt
+        - --tls-private-key-file-name=tls.key
+        - --metrics-bind-address=:8080
+        - --health-probe-bind-address=:8000
+        - --device-config-file=/device-config.yaml
+        image: ghcr.io/project-hami/hami-dra-webhook:v0.2.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: webhook
+        ports:
+        - containerPort: 8443
+          name: webhook
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8000
+          name: health
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /device-config.yaml
+          name: device-config
+          subPath: device-config.yaml
+        - mountPath: /tls
+          name: tls-config
+          readOnly: true
+      serviceAccountName: hami-hami-dra-webhook
+      volumes:
+      - configMap:
+          name: hami-hami-dra-webhook-device-config
+        name: device-config
+      - name: tls-config
+        secret:
+          secretName: hami-dra-webhook-tls

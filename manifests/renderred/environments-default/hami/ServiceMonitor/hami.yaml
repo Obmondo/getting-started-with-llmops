@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.tanka.grafana.com: hami
+  name: hami
+  namespace: hami
+spec:
+  endpoints:
+  - interval: 30s
+    path: /metrics
+    port: metrics
+  namespaceSelector:
+    matchNames:
+    - hami
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: monitor
+      app.kubernetes.io/instance: hami
+      app.kubernetes.io/name: hami

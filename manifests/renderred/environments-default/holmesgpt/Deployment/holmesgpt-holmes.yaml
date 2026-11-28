@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: holmes
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: holmesgpt
+  name: holmesgpt-holmes
+  namespace: holmesgpt
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: holmes
+  template:
+    metadata:
+      annotations:
+        checksum/toolset-config: 5b3a34cef2c8ad80a3023641fd1d827edec39f4b88580d54c4d01606b6d0850b
+      labels:
+        app: holmes
+    spec:
+      containers:
+      - command:
+        - python3
+        - -u
+        - server.py
+        env:
+        - name: LOG_LEVEL
+          value: INFO
+        - name: ENABLE_JSON_LOGS_FORMAT
+          value: "false"
+        - name: ENABLE_TELEMETRY
+          value: "true"
+        - name: SENTRY_DSN
+          value: null
+        image: robustadev/holmes:0.48.0
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - bash
+              - -c
+              - kill -SIGINT 1
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: holmes
+        ports:
+        - containerPort: 5050
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            memory: 2048Mi
+          requests:
+            cpu: 100m
+            memory: 2048Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+        - mountPath: /etc/robusta/config
+          name: playbooks-config-secret
+        - mountPath: /etc/holmes/config
+          name: custom-toolsets-configmap
+      dnsPolicy: ClusterFirst
+      serviceAccountName: holmesgpt-holmes-service-account
+      volumes:
+      - emptyDir:
+          sizeLimit: 256Mi
+        name: tmp-volume
+      - name: playbooks-config-secret
+        secret:
+          optional: true
+          secretName: robusta-playbooks-config-secret
+      - configMap:
+          name: custom-toolsets-configmap
+          optional: true
+        name: custom-toolsets-configmap

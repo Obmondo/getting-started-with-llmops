@@ -1,6 +1,24 @@
-local kserve = import 'kserve.libsonnet';
+local Utils = import './utils.libsonnet';
+local KServe = import 'kserve.libsonnet';
+local LMCache = import 'lmcache.libsonnet';
+
+local app = 'gemma4',
+      namespace = KServe.kserve.namespace.metadata.name;
 
 local modelURI = 'hf://google/gemma-4-12B-it-qat-w4a16-ct';
+
+local torchCompileCachePVC = {
+  apiVersion: 'v1',
+  kind: 'PersistentVolumeClaim',
+  metadata: {
+    name: 'gemma4-12b-torch-compile-cache',
+    namespace: namespace,
+  },
+  spec: {
+    accessModes: ['ReadWriteOnce'],
+    resources: { requests: { storage: '5Gi' } },
+  },
+};
 
 /*
   Gemma is a family of open models built by Google DeepMind. Gemma 4 models are multimodal,
@@ -69,7 +87,7 @@ local llmInferenceService = {
   kind: 'LLMInferenceService',
   metadata: {
     name: 'gemma4-12b',
-    namespace: kserve.kserve.namespace.metadata.name,
+    namespace: namespace,
   },
   spec: {
     model: {
@@ -80,9 +98,18 @@ local llmInferenceService = {
     replicas: 1,
 
     template: {
+      // Required to communicate with LMCache engine.
+      hostNetwork: true,
+      dnsPolicy: 'ClusterFirstWithHostNet',
+
       containers: [{
         name: 'main',
-        image: 'vllm/vllm-openai:gemma',
+
+        // This image has INSTALL_KV_CONNECTORS=true set. You can verify it here :
+        // https://hub.docker.com/layers/vllm/vllm-openai/gemma4/images/sha256-8e86cb93b724092cd4dc892fb129a6c5538613b38a5cd34e40aab9e6aea72b03.
+        // You can see here what that boolean flag does :
+        // https://github.com/vllm-project/vllm/blob/162277e73f2562d040c35d3677f296bc4379b3b9/docker/Dockerfile#L1260.
+        image: 'vllm/vllm-openai:gemma4',
 
         // REFER : docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html.
         args: [
@@ -149,6 +176,64 @@ local llmInferenceService = {
                             returns None.
           */
           '--no-async-scheduling',
+
+          /*
+            vLLM provides KV caching via it's Automatic Prefix Caching (APC) feature, which is
+            enabled by default.
+
+            The unit of operation is a chunk — a fixed-size piece of KV data covering a group of
+            tokens. By default, a chunk maps to a single accelerator block. A configurable
+            blocks_per_chunk parameter allows larger chunks, yielding larger I/Os to the host and
+            secondary tiers.
+
+            vLLM's OffloadingConnector extends the prefix cache by offloading completed KV blocks
+            to slower but larger tiers (CPU host memory, plus optional secondary tiers) as they are
+            produced. Hits in the offload tiers are promoted back to GPU on demand. Transfers
+            between GPU and CPU use DMA (cudaMemcpyAsync) and run asynchronously alongside model
+            computation, so offloading adds minimal CPU- and GPU-core overhead.
+
+            We'll be offloading to LMCache.
+          */
+          '--kv-transfer-config',
+          std.escapeStringBash(std.manifestJsonMinified({
+            // The LMCacheMPConnector connector defaults to vLLM’s built-in connector :
+            // vllm.distributed.kv_transfer.kv_connector.v1.LMCacheMPConnector, but  but you can
+            // opt in to the LMCache-shipped implementation. The LMCache-shipped connector tracks
+            // the latest LMCache server protocol and ships fixes/features ahead of the version
+            // vendored into vLLM.
+            kv_connector: 'LMCacheMPConnector',
+            kv_role: 'kv_both',
+          })),
+        ],
+
+        env: [
+          // We use the same seed, so the hash of a KV cache block always comes out to be the same.
+          { name: 'PYTHONHASHSEED', value: '0' },
+        ],
+
+        volumeMounts: [
+          /*
+            Functions which execute on the GPU which can be invoked from the host are called
+            kernels.
+
+            torch.compile is the new way to speed up your PyTorch code! torch.compile makes PyTorch
+            code run faster by JIT-compiling PyTorch code into optimized kernels, while requiring
+            minimal code changes.
+
+            vLLM guarantees that the cache is safe to use, and will not cause any unexpected
+            behavior.
+          */
+          {
+            name: 'torch-compile-cache',
+            mountPath: '/home/.cache/vllm',
+          },
+
+          // Both vLLM and LMCache containers mount /dev/shm from the host to enable CUDA IPC
+          // memory sharing in the default (legacy) mode.
+          {
+            name: 'dev-shm',
+            mountPath: '/dev/shm',
+          },
         ],
 
         // The kserve-config-llm-template preset sets `runAsNonRoot: true` on this container, but
@@ -162,18 +247,35 @@ local llmInferenceService = {
 
         resources: {
           requests: {
-            'nvidia.com/gpu': '1',
             cpu: '4',
             memory: '16Gi',
+            'nvidia.com/gpumem': 20000,
+            'nvidia.com/gpucores': 60,
           },
           limits: {
-            'nvidia.com/gpu': '1',
             cpu: '6',
             memory: '32Gi',
+            'nvidia.com/gpumem': 20000,
+            'nvidia.com/gpucores': 60,
           },
         },
       }],
 
+      volumes: [
+        {
+          name: 'torch-compile-cache',
+          persistentVolumeClaim: { claimName: torchCompileCachePVC.metadata.name },
+        },
+
+        // Required for communication with the LMCache engine using CUDA IPC.
+        {
+          name: 'dev-shm',
+          hostPath: {
+            path: '/dev/shm',
+            type: 'Directory',
+          },
+        },
+      ],
     },
 
     /*
@@ -198,7 +300,6 @@ local localModelNodeGroup = {
   kind: 'LocalModelNodeGroup',
   metadata: {
     name: 'gemma4-12b',
-    namespace: '',
   },
   spec: {
     storageLimit: localModelNodeGroupStorageLimit,
@@ -207,7 +308,7 @@ local localModelNodeGroup = {
       accessModes: ['ReadWriteOnce'],
       volumeMode: 'Filesystem',
       capacity: { storage: localModelNodeGroupStorageLimit },
-      storageClassName: kserve.kserve.localModelStorageClass.metadata.name,
+      storageClassName: KServe.kserve.localModelStorageClass.metadata.name,
       'local': { path: '/models' },
       nodeAffinity: {
         required: {
@@ -226,7 +327,7 @@ local localModelNodeGroup = {
       accessModes: ['ReadWriteOnce'],
       volumeMode: 'Filesystem',
       resources: { requests: { storage: localModelNodeGroupStorageLimit } },
-      storageClassName: kserve.kserve.localModelStorageClass.metadata.name,
+      storageClassName: KServe.kserve.localModelStorageClass.metadata.name,
     },
   },
 };
@@ -236,7 +337,6 @@ local localModelCache = {
   kind: 'LocalModelCache',
   metadata: {
     name: 'gemma4-12b',
-    namespace: '',
   },
   spec: {
     sourceModelUri: modelURI,
@@ -246,8 +346,11 @@ local localModelCache = {
 };
 
 {
-  llmInferenceService: llmInferenceService,
+  gemma4_12b: Utils.withAppLabel(app, {
+    llmInferenceService: llmInferenceService,
+    torchCompileCachePVC: torchCompileCachePVC,
 
-  localModelNodeGroup: localModelNodeGroup,
-  localModelCache: localModelCache,
+    localModelNodeGroup: localModelNodeGroup,
+    localModelCache: localModelCache,
+  }),
 }

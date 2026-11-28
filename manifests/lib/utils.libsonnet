@@ -1,6 +1,9 @@
 local Tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
+local Kubernetes = import 'github.com/jsonnet-libs/k8s-libsonnet/1.32/main.libsonnet';
 
 {
+  newNamespace(name):: Kubernetes.core.v1.namespace.new(name),
+
   // Returns the path to the given Helm Chart, relative to the calling file.
   chartsDir(app, thisFile)::
     local callerFilePathParts = std.split(thisFile, '/');

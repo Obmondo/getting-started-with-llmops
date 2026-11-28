@@ -22,29 +22,33 @@ repositories:
   url: oci://quay.io/jetstack/charts
 - name: prometheus-community
   url: https://prometheus-community.github.io/helm-charts
+- name: robusta
+  url: https://robusta-charts.storage.googleapis.com
+- name: keephq
+  url: https://keephq.github.io/helm-charts
 requires:
 - chart: cilium/cilium
   version: 1.19.4
 - chart: nvidia/gpu-operator
   version: v26.3.0
 - chart: nvidia-oci/nvsentinel
-  version: v1.18.0
+  version: v1.33.0
 - chart: cloudnative-pg/cloudnative-pg
   version: 0.28.2
 - chart: hami-dra/hami-dra
-  version: 0.2.1
+  version: 0.2.4
 - chart: kserve/kserve-llmisvc-crd
-  version: v0.20.0
+  version: v0.21.0
 - chart: kserve/kserve-llmisvc-resources
-  version: v0.20.0
+  version: v0.21.0
 - chart: kserve/kserve-runtime-configs
-  version: v0.20.0
+  version: v0.21.0
 - chart: kserve/kserve-crd
-  version: v0.20.0
+  version: v0.21.0
 - chart: kserve/kserve-localmodel-crd
-  version: v0.20.0
+  version: v0.21.0
 - chart: kserve/kserve-localmodel-resources
-  version: v0.20.0
+  version: v0.21.0
 - chart: openebs/localpv-provisioner
   version: 4.5.1
 - chart: vectorize/hindsight
@@ -53,4 +57,8 @@ requires:
   version: 1.20.2
 - chart: prometheus-community/kube-prometheus-stack
   version: 86.1.0
+- chart: robusta/holmes
+  version: 0.48.0
+- chart: keephq/keep
+  version: 0.1.97
 version: 1

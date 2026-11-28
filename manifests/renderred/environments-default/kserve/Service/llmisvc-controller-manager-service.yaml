@@ -6,11 +6,11 @@ metadata:
     app.kubernetes.io/instance: kserve-llmisvc-resources
     app.kubernetes.io/managed-by: Helmraiser
     app.kubernetes.io/name: llmisvc-controller-manager
-    app.kubernetes.io/version: v0.20.0
+    app.kubernetes.io/version: v0.21.0
     app.tanka.grafana.com: kserve
     control-plane: llmisvc-controller-manager
     controller-tools.k8s.io: "1.0"
-    helm.sh/chart: kserve-llmisvc-resources-v0.20.0
+    helm.sh/chart: kserve-llmisvc-resources-v0.21.0
   name: llmisvc-controller-manager-service
   namespace: kserve
 spec:

@@ -2,6 +2,7 @@ local Tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet'
       Helm = Tanka.helm.new(std.thisFile);
 local Kubernetes = import 'github.com/jsonnet-libs/k8s-libsonnet/1.32/main.libsonnet';
 local Utils = import './utils.libsonnet';
+local LMCache = import './lmcache.libsonnet';
 
 local app = 'gpu-operator';
 
@@ -52,6 +53,19 @@ local app = 'gpu-operator';
         // The VM already has NVIDIA driver installed, because of the Ubuntu 22.4 template that
         // we're using.
         driver: { enabled: false },
+
+        toolkit: {
+          env: [{
+            // By default, only pods in the namespace where the GPU Operator is installed, which is
+            // the namespace where the NVIDIA Container Toolkit runs, are permitted to request
+            // management CDI devices. To permit pods in other namespaces to request management CDI
+            // devices, add those namespaces to the NRI_MANAGEMENT_CDI_DEVICE_NAMESPACES environment
+            // variable on the NVIDIA Container Toolkit. The value is a comma-separated list of
+            // namespaces.
+            name: 'NRI_MANAGEMENT_CDI_DEVICE_NAMESPACES',
+            value: LMCache.lmCache.namespace.metadata.name,
+          }],
+        },
 
         // NOTE : We're using HAMi for GPU sharing.
         /*

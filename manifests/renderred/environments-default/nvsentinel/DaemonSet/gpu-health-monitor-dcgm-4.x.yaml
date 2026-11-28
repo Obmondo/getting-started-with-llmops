@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8348c311e991b9a5a1f7256f099915d388b066fb298d2492fd3135826b9f1294
+        checksum/config: 5761354bfa0240af5a373f3a15e80b6e3004bb83318529f4cff8dd418ed430da
       labels:
         app.kubernetes.io/instance: nvsentinel
         app.kubernetes.io/name: gpu-health-monitor
@@ -30,11 +30,13 @@ spec:
         - --dcgm-error-mapping-config-file
         - /etc/dcgmhealth/dcgmerrorsmapping.csv
         - --dcgm-addr
-        - nvidia-dcgm.gpu-operator.svc:5555
+        - nvidia-dcgm-dra.gpu-operator.svc:5555,nvidia-dcgm.gpu-operator.svc:5555
         - --dcgm-mode
         - remote
         - --port
         - "2112"
+        - --metrics-addr
+        - 0.0.0.0
         - --verbose
         - "False"
         - --state-file
@@ -55,7 +57,9 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: spec.nodeName
-        image: ghcr.io/nvidia/nvsentinel/gpu-health-monitor:v1.18.0-dcgm-4.x
+        - name: PLATFORM_CONNECTOR_TOKEN_PATH
+          value: /var/run/secrets/nvsentinel/platform-connector/token
+        image: ghcr.io/nvidia/nvsentinel/gpu-health-monitor:v1.33.0-dcgm-4.x
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -94,6 +98,9 @@ spec:
         - mountPath: /var/lib/nvsentinel
           name: gpu-metadata
           readOnly: true
+        - mountPath: /var/run/secrets/nvsentinel/platform-connector
+          name: platform-connector-token
+          readOnly: true
       nodeSelector:
         nvsentinel.dgxc.nvidia.com/dcgm.version: 4.x
       tolerations:
@@ -111,6 +118,13 @@ spec:
           path: /var/lib/nvsentinel
           type: DirectoryOrCreate
         name: gpu-metadata
+      - name: platform-connector-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: platform-connector.nvsentinel.nvidia.com
+              expirationSeconds: 3600
+              path: token
   updateStrategy:
     rollingUpdate:
       maxUnavailable: 5%

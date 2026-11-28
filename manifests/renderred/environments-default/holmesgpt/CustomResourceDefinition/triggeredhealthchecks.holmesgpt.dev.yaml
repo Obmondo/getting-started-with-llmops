@@ -1,0 +1,219 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: holmesgpt
+  name: triggeredhealthchecks.holmesgpt.dev
+  namespace: holmesgpt
+spec:
+  group: holmesgpt.dev
+  names:
+    kind: TriggeredHealthCheck
+    listKind: TriggeredHealthCheckList
+    plural: triggeredhealthchecks
+    shortNames:
+    - thc
+    singular: triggeredhealthcheck
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Whether the trigger is enabled
+      jsonPath: .spec.enabled
+      name: Enabled
+      type: boolean
+    - description: Number of times fired
+      jsonPath: .status.triggerCount
+      name: Triggers
+      type: integer
+    - description: Last time the trigger fired
+      jsonPath: .status.lastTriggerTime
+      name: Last Fired
+      type: date
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              cooldownSeconds:
+                default: 0
+                description: Suppress re-firing for the same Deployment within this
+                  many seconds (0 = disabled)
+                minimum: 0
+                type: integer
+              delaySeconds:
+                default: 300
+                description: How long to wait after a rollout before running the check
+                  (seconds). Gives the rollout time to finish and problems time to
+                  surface. Default 300 (5 min); 0 = check immediately; up to 604800
+                  (7 days). The wait is saved on the resource and survives operator
+                  restarts.
+                maximum: 604800
+                minimum: 0
+                type: integer
+              deploymentRollout:
+                description: Fire when a matching Deployment rolls out a new pod template
+                properties:
+                  selector:
+                    description: Select which Deployments to watch (empty matches
+                      all in the namespace)
+                    properties:
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: Deployment labels that must all match
+                        type: object
+                    type: object
+                type: object
+              destinations:
+                description: Alert destinations for failed checks (only used in alert
+                  mode)
+                items:
+                  properties:
+                    config:
+                      description: Destination-specific configuration
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    type:
+                      description: Destination type (e.g., 'slack', 'pagerduty')
+                      type: string
+                  required:
+                  - type
+                  type: object
+                type: array
+              enabled:
+                default: true
+                description: Whether the trigger is active
+                type: boolean
+              mode:
+                default: monitor
+                description: 'Execution mode: ''alert'' sends notifications on failure,
+                  ''monitor'' logs only'
+                enum:
+                - alert
+                - monitor
+                type: string
+              model:
+                description: Override default LLM model for this check
+                type: string
+              query:
+                description: Natural language question. Supports tokens {{ .deployment
+                  }}, {{ .namespace }}, {{ .old.image }}, {{ .new.image }}
+                maxLength: 5000
+                minLength: 1
+                type: string
+              timeout:
+                default: 120
+                description: Execution timeout in seconds
+                maximum: 300
+                minimum: 1
+                type: integer
+            required:
+            - deploymentRollout
+            - query
+            type: object
+          status:
+            properties:
+              conditions:
+                description: Standard Kubernetes conditions
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      description: 'Condition status: True, False, or Unknown'
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: Condition type (e.g., 'Ready', 'TriggerFailed')
+                      type: string
+                  required:
+                  - type
+                  - status
+                  type: object
+                type: array
+              cooldowns:
+                description: Per-Deployment last-fire times used to enforce cooldownSeconds
+                items:
+                  properties:
+                    deployment:
+                      type: string
+                    lastTriggerTime:
+                      format: date-time
+                      type: string
+                  required:
+                  - deployment
+                  - lastTriggerTime
+                  type: object
+                type: array
+              history:
+                description: Recent triggered executions (last N)
+                items:
+                  properties:
+                    checkName:
+                      type: string
+                    deployment:
+                      type: string
+                    newImage:
+                      type: string
+                    oldImage:
+                      type: string
+                    triggerTime:
+                      format: date-time
+                      type: string
+                  required:
+                  - triggerTime
+                  - deployment
+                  - checkName
+                  type: object
+                type: array
+              lastTriggerDeployment:
+                description: Deployment whose rollout last fired the trigger
+                type: string
+              lastTriggerTime:
+                description: Last time the trigger fired
+                format: date-time
+                type: string
+              pending:
+                description: Delayed checks scheduled to run later (delaySeconds),
+                  persisted to survive operator restarts
+                items:
+                  properties:
+                    deployment:
+                      type: string
+                    fireAt:
+                      format: date-time
+                      type: string
+                    newImage:
+                      type: string
+                    oldImage:
+                      type: string
+                    scheduledAt:
+                      format: date-time
+                      type: string
+                  required:
+                  - deployment
+                  - fireAt
+                  type: object
+                type: array
+              triggerCount:
+                description: Total number of times the trigger has fired
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

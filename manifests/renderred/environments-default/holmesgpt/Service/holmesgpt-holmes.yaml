@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: holmes
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: holmesgpt
+  name: holmesgpt-holmes
+  namespace: holmesgpt
+spec:
+  ports:
+  - appProtocol: http
+    name: http
+    port: 80
+    protocol: TCP
+    targetPort: 5050
+  selector:
+    app: holmes

@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  custom_toolset.yaml: "toolsets: \n  bash:\n    config:\n      builtin_allowlist:
+    extended\n    enabled: true\n  connectivity_check:\n    enabled: true\n  internet:\n
+    \   enabled: true\n  kubernetes/core:\n    enabled: true\n  kubernetes/logs:\n
+    \   enabled: true\n  prometheus/metrics:\n    enabled: true\n  robusta:\n    enabled:
+    true\n  skills:\n    enabled: true\nmcp_servers: \n  {}"
+  model_list.yaml: '{}'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: holmesgpt
+  name: custom-toolsets-configmap
+  namespace: holmesgpt

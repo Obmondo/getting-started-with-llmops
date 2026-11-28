@@ -1,0 +1,145 @@
+apiVersion: v1
+data:
+  device-config.yaml: "nvidia:\n  resourceCountName: nvidia.com/gpu\n  resourceMemoryName:
+    nvidia.com/gpumem\n  resourceMemoryPercentageName: nvidia.com/gpumem-percentage\n
+    \ resourceCoreName: nvidia.com/gpucores\n  resourcePriorityName: nvidia.com/priority\n
+    \ deviceClassName: hami-core-gpu.project-hami.io\n  draDriverName: hami-core-gpu.project-hami.io\n
+    \ overwriteEnv: false\n  defaultMemory: 0\n  defaultCores: 0\n  defaultGPUNum:
+    1\n  knownMigGeometries:\n  - models: [ \"A30\" ]\n    allowedGeometries:\n      -
+    \n        - name: 1g.6gb\n          core: 25\n          memory: 6144\n          count:
+    4\n      - \n        - name: 2g.12gb\n          core: 50\n          memory: 12288\n
+    \         count: 2\n      - \n        - name: 4g.24gb\n          core: 100\n          memory:
+    24576\n          count: 1\n  - models: [ \"A100-SXM4-40GB\", \"A100-40GB-PCIe\",
+    \"A100-PCIE-40GB\"]\n    allowedGeometries:\n      - \n        - name: 1g.5gb\n
+    \         core: 14\n          memory: 5120\n          count: 7\n      - \n        -
+    name: 1g.5gb\n          core: 14\n          memory: 5120\n          count: 1\n
+    \       - name: 2g.10gb\n          core: 28\n          memory: 10240\n          count:
+    3\n      - \n        - name: 3g.20gb\n          core: 42\n          memory: 20480\n
+    \         count: 2\n      - \n        - name: 7g.40gb\n          core: 100\n          memory:
+    40960\n          count: 1\n  - models: [ \"A100-SXM4-80GB\", \"A100-80GB-PCIe\",
+    \"A100-PCIE-80GB\"]\n    allowedGeometries:\n      - \n        - name: 1g.10gb\n
+    \         core: 14\n          memory: 10240\n          count: 7\n      - \n        -
+    name: 1g.10gb\n          core: 14\n          memory: 10240\n          count: 1\n
+    \       - name: 2g.20gb\n          core: 28\n          memory: 20480\n          count:
+    3\n      - \n        - name: 3g.40gb\n          core: 42\n          memory: 40960\n
+    \         count: 2\n      - \n        - name: 7g.79gb\n          core: 100\n          memory:
+    80896\n          count: 1\n  - models: [ \"H100-PCIE-80GB\", \"H100-SXM5-80GB\"]\n
+    \   allowedGeometries:\n      - \n        - name: 1g.10gb\n          core: 14\n
+    \         memory: 10240\n          count: 7\n      - \n        - name: 1g.10gb\n
+    \         core: 14\n          memory: 10240\n          count: 1\n        - name:
+    2g.20gb\n          core: 28\n          memory: 20480\n          count: 3\n      -
+    \n        - name: 3g.40gb\n          core: 42\n          memory: 40960\n          count:
+    2\n      - \n        - name: 7g.80gb\n          core: 100\n          memory: 81920\n
+    \         count: 1\n  - models: [ \"H100-PCIE-94GB\", \"H100-SXM5-94GB\"]\n    allowedGeometries:\n
+    \     - \n        - name: 1g.12gb\n          core: 14\n          memory: 12288\n
+    \         count: 7\n      - \n        - name: 1g.12gb\n          core: 14\n          memory:
+    12288\n          count: 1\n        - name: 2g.24gb\n          core: 28\n          memory:
+    24576\n          count: 3\n      - \n        - name: 3g.47gb\n          core:
+    42\n          memory: 48128\n          count: 2\n      - \n        - name: 7g.94gb\n
+    \         core: 100\n          memory: 96256\n          count: 1\n  - models:
+    [ \"H20\", \"H100 on GH200\"]\n    allowedGeometries:\n      - \n        - name:
+    1g.12gb\n          core: 14\n          memory: 12288\n          count: 7\n      -
+    \n        - name: 1g.12gb\n          core: 14\n          memory: 12288\n          count:
+    1\n        - name: 2g.24gb\n          core: 28\n          memory: 24576\n          count:
+    3 \n      - \n        - name: 3g.48gb\n          core: 42\n          memory: 49152\n
+    \         count: 2\n      - \n        - name: 7g.96gb\n          core: 100\n          memory:
+    98304\n          count: 1\n  - models: [ \"H200 NVL\", \"H200-SXM5\"]\n    allowedGeometries:\n
+    \     - \n        - name: 1g.18gb\n          core: 14\n          memory: 18432\n
+    \         count: 7\n      - \n        - name: 1g.18gb\n          core: 14\n          memory:
+    18432\n          count: 1\n        - name: 2g.35gb\n          core: 28\n          memory:
+    35840\n          count: 3\n      - \n        - name: 3g.71gb\n          core:
+    42\n          memory: 72704\n          count: 2\n      - \n        - name: 7g.141gb\n
+    \         core: 100\n          memory: 144384\n          count: 1\n  - models:
+    [ \"B200\" ]\n    allowedGeometries:\n      - \n        - name: 1g.23gb\n          core:
+    14\n          memory: 23552\n          count: 7\n      - \n        - name: 1g.23gb\n
+    \         core: 14\n          memory: 23552\n          count: 1\n        - name:
+    2g.45gb\n          core: 28\n          memory: 46080\n          count: 3\n      -
+    \n        - name: 3g.90gb\n          core: 42\n          memory: 92160\n          count:
+    2\n      - \n        - name: 7g.180gb\n          core: 100\n          memory:
+    184320\n          count: 1\ncambricon:\n  resourceCountName: cambricon.com/vmlu\n
+    \ resourceMemoryName: cambricon.com/mlu.smlu.vmemory\n  resourceCoreName: cambricon.com/mlu.smlu.vcore\nhygon:\n
+    \ resourceCountName: hygon.com/hcunum\n  resourceMemoryName: hygon.com/hcumem\n
+    \ resourceCoreName: hygon.com/hcucores\n  deviceClassName: dra.hygon.com\n  draDriverName:
+    dra.hygon.com\n  requestName: hcu\n  referenceComputeUnits: 0\namd:\n  resourceCountName:
+    amd.com/gpu\n  resourceMemoryName: amd.com/gpumem\n  resourceCoreName: amd.com/gpucores\n
+    \ resourceMemoryPercentageName: amd.com/gpumem-percentage\n  deviceClassName:
+    gpu.amd.com\n  draDriverName: gpu.amd.com\n  requestName: gpu\n  referenceComputeUnits:
+    0\nascend:\n  deviceClassName: hami-vnpu-core.project-hami.io\n  draDriverName:
+    ascend.project-hami.io\n  requestName: npu\n  devices:\n  - commonWord: Ascend910A\n
+    \   chipName: \"910A\"\n    resourceName: huawei.com/Ascend910A\n    resourceMemoryName:
+    huawei.com/Ascend910A-memory\n    resourceCoreName: huawei.com/Ascend910A-core\n
+    \ - commonWord: Ascend910B2\n    chipName: \"910B2\"\n    resourceName: huawei.com/Ascend910B2\n
+    \   resourceMemoryName: huawei.com/Ascend910B2-memory\n    resourceCoreName: huawei.com/Ascend910B2-core\n
+    \ - commonWord: Ascend910B3\n    chipName: \"910B3\"\n    resourceName: huawei.com/Ascend910B3\n
+    \   resourceMemoryName: huawei.com/Ascend910B3-memory\n    resourceCoreName: huawei.com/Ascend910B3-core\n
+    \ - commonWord: Ascend910B4-1\n    chipName: \"910B4-1\"\n    resourceName: huawei.com/Ascend910B4-1\n
+    \   resourceMemoryName: huawei.com/Ascend910B4-1-memory\n    resourceCoreName:
+    huawei.com/Ascend910B4-1-core\n  - commonWord: Ascend910B4\n    chipName: \"910B4\"\n
+    \   resourceName: huawei.com/Ascend910B4\n    resourceMemoryName: huawei.com/Ascend910B4-memory\n
+    \   resourceCoreName: huawei.com/Ascend910B4-core\n  - commonWord: Ascend310P\n
+    \   chipName: \"310P3\"\n    resourceName: huawei.com/Ascend310P\n    resourceMemoryName:
+    huawei.com/Ascend310P-memory\n    resourceCoreName: huawei.com/Ascend310P-core\n
+    \ - commonWord: Ascend910C\n    chipName: \"Ascend910\"\n    resourceName: huawei.com/Ascend910C\n
+    \   resourceMemoryName: huawei.com/Ascend910C-memory\n    resourceCoreName: huawei.com/Ascend910C-core\nvendors:\n
+    \ - \"nvidia\"\nmetax:\n  resourceCountName: \"metax-tech.com/gpu\"\n  resourceVCountName:
+    metax-tech.com/sgpu\n  resourceVMemoryName: metax-tech.com/vmemory\n  resourceVCoreName:
+    metax-tech.com/vcore\n  sgpuTopologyAware: false\nenflame:\n  resourceNameGCU:
+    \"enflame.com/gcu\"\n  resourceNameVGCU: enflame.com/vgcu\n  resourceNameVGCUPercentage:
+    enflame.com/vgcu-percentage\nmthreads:\n  resourceCountName: \"mthreads.com/vgpu\"\n
+    \ resourceMemoryName: \"mthreads.com/sgpu-memory\"\n  resourceCoreName: \"mthreads.com/sgpu-core\"\niluvatars:\n-
+    chipName: MR-V100\n  commonWord: MR-V100\n  resourceCountName: iluvatar.ai/MR-V100-vgpu\n
+    \ resourceMemoryName: iluvatar.ai/MR-V100.vMem\n  resourceCoreName: iluvatar.ai/MR-V100.vCore\n-
+    chipName: MR-V50\n  commonWord: MR-V50\n  resourceCountName: iluvatar.ai/MR-V50-vgpu\n
+    \ resourceMemoryName: iluvatar.ai/MR-V50.vMem\n  resourceCoreName: iluvatar.ai/MR-V50.vCore\n-
+    chipName: BI-V150\n  commonWord: BI-V150\n  resourceCountName: iluvatar.ai/BI-V150-vgpu\n
+    \ resourceMemoryName: iluvatar.ai/BI-V150.vMem\n  resourceCoreName: iluvatar.ai/BI-V150.vCore\n-
+    chipName: BI-V100\n  commonWord: BI-V100\n  resourceCountName: iluvatar.ai/BI-V100-vgpu\n
+    \ resourceMemoryName: iluvatar.ai/BI-V100.vMem\n  resourceCoreName: iluvatar.ai/BI-V100.vCore\nkunlun:\n
+    \ resourceCountName: kunlunxin.com/xpu\n  resourceVCountName: kunlunxin.com/vxpu\n
+    \ resourceVMemoryName: kunlunxin.com/vxpu-memory\nawsneuron:\n  resourceCountName:
+    \"aws.amazon.com/neuron\"\n  resourceCoreName: \"aws.amazon.com/neuroncore\"\nvnpus:\n-
+    chipName: 910A\n  commonWord: Ascend910A\n  resourceName: huawei.com/Ascend910A\n
+    \ resourceMemoryName: huawei.com/Ascend910A-memory\n  memoryAllocatable: 32768\n
+    \ memoryCapacity: 32768\n  aiCore: 30\n  templates:\n    - name: vir02\n      memory:
+    2184\n      aiCore: 2\n    - name: vir04\n      memory: 4369\n      aiCore: 4\n
+    \   - name: vir08\n      memory: 8738\n      aiCore: 8\n    - name: vir16\n      memory:
+    17476\n      aiCore: 16\n- chipName: 910B2\n  commonWord: Ascend910B2\n  resourceName:
+    huawei.com/Ascend910B2\n  resourceMemoryName: huawei.com/Ascend910B2-memory\n
+    \ memoryAllocatable: 65536\n  memoryCapacity: 65536\n  aiCore: 24\n  aiCPU: 6\n
+    \ templates:\n    - name: vir03_1c_8g\n      memory: 8192\n      aiCore: 3\n      aiCPU:
+    1\n    - name: vir06_1c_16g\n      memory: 16384\n      aiCore: 6\n      aiCPU:
+    1\n    - name: vir12_3c_32g\n      memory: 32768\n      aiCore: 12\n      aiCPU:
+    3\n- chipName: 910B3\n  commonWord: Ascend910B3\n  resourceName: huawei.com/Ascend910B3\n
+    \ resourceMemoryName: huawei.com/Ascend910B3-memory\n  memoryAllocatable: 65536\n
+    \ memoryCapacity: 65536\n  aiCore: 20\n  aiCPU: 7\n  templates:\n    - name: vir05_1c_16g\n
+    \     memory: 16384\n      aiCore: 5\n      aiCPU: 1\n    - name: vir10_3c_32g\n
+    \     memory: 32768\n      aiCore: 10\n      aiCPU: 3\n- chipName: 910B4-1\n  commonWord:
+    Ascend910B4-1\n  resourceName: huawei.com/Ascend910B4-1\n  resourceMemoryName:
+    huawei.com/Ascend910B4-1-memory\n  memoryAllocatable: 65536\n  memoryCapacity:
+    65536\n  aiCore: 20\n  aiCPU: 7\n  templates:\n    # NOTE: Names of vnpu template
+    for 910B4-1 are fixed by Ascend runtime and must not be changed.\n    # The memory
+    is used for scheduling so the correct values must be set.\n    # Template vir05_1c_8g
+    actually provides 16GB memory,\n    - name: vir05_1c_8g\n      memory: 16384\n
+    \     aiCore: 5\n      aiCPU: 1\n    # Template vir10_3c_16g actually provides
+    32GB memory\n    - name: vir10_3c_16g\n      memory: 32768\n      aiCore: 10\n
+    \     aiCPU: 3\n- chipName: 910B4\n  commonWord: Ascend910B4\n  resourceName:
+    huawei.com/Ascend910B4\n  resourceMemoryName: huawei.com/Ascend910B4-memory\n
+    \ memoryAllocatable: 32768\n  memoryCapacity: 32768\n  aiCore: 20\n  aiCPU: 7\n
+    \ templates:\n    - name: vir05_1c_8g\n      memory: 8192\n      aiCore: 5\n      aiCPU:
+    1\n    - name: vir10_3c_16g\n      memory: 16384\n      aiCore: 10\n      aiCPU:
+    3\n- chipName: 310P3\n  commonWord: Ascend310P\n  resourceName: huawei.com/Ascend310P\n
+    \ resourceMemoryName: huawei.com/Ascend310P-memory\n  memoryAllocatable: 21527\n
+    \ memoryCapacity: 24576\n  aiCore: 8\n  aiCPU: 7\n  templates:\n    - name: vir01\n
+    \     memory: 3072\n      aiCore: 1\n      aiCPU: 1\n    - name: vir02\n      memory:
+    6144\n      aiCore: 2\n      aiCPU: 2\n    - name: vir04\n      memory: 12288\n
+    \     aiCore: 4\n      aiCPU: 4"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: hami
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hami
+    app.tanka.grafana.com: hami
+  name: hami-hami-dra-webhook-device-config
+  namespace: hami

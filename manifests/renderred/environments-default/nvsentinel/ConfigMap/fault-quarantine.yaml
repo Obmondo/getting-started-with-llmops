@@ -5,6 +5,9 @@ data:
 
     [circuitBreaker]
     percentage = 50
+    maxNodes = 0
+    maxCordonedNodes = 0
+    maxCordonedPercentage = 0
     duration = "5m"
     [[rule-sets]]
       enabled = true
@@ -89,12 +92,64 @@ data:
     [[rule-sets]]
       enabled = true
       version = "1"
+      name = "NVCRE certification monitor failure ruleset"
+      priority = 0
+
+      [[rule-sets.match.all]]
+        kind = "HealthEvent"
+        expression = "event.agent == 'nvcre-certification-monitor' && event.checkName == 'NVCRECertFailed' && event.isFatal == true"
+
+      [[rule-sets.match.all]]
+        kind = "Node"
+        expression = "!('k8saas.nvidia.com/ManagedByNVSentinel' in node.metadata.labels && node.metadata.labels['k8saas.nvidia.com/ManagedByNVSentinel'] == \"false\") && !('nvsentinel.dgxc.nvidia.com/managed' in node.metadata.labels && node.metadata.labels['nvsentinel.dgxc.nvidia.com/managed'] == \"false\")"
+      [rule-sets.taint]
+        key = "nvsentinel.dgxc.nvidia.com/nvcre-cert-failed"
+        value = "true"
+        effect = "NoSchedule"
+
+      [rule-sets.cordon]
+        shouldCordon = false
+    [[rule-sets]]
+      enabled = true
+      version = "1"
       name = "Preflight check fatal error ruleset"
       priority = 0
 
       [[rule-sets.match.all]]
         kind = "HealthEvent"
         expression = "event.agent.startsWith('preflight-') && event.isFatal == true"
+
+      [[rule-sets.match.all]]
+        kind = "Node"
+        expression = "!('k8saas.nvidia.com/ManagedByNVSentinel' in node.metadata.labels && node.metadata.labels['k8saas.nvidia.com/ManagedByNVSentinel'] == \"false\") && !('nvsentinel.dgxc.nvidia.com/managed' in node.metadata.labels && node.metadata.labels['nvsentinel.dgxc.nvidia.com/managed'] == \"false\")"
+
+      [rule-sets.cordon]
+        shouldCordon = true
+    [[rule-sets]]
+      enabled = true
+      version = "1"
+      name = "Health events analyzer fatal error ruleset"
+      priority = 0
+
+      [[rule-sets.match.all]]
+        kind = "HealthEvent"
+        expression = "event.agent == 'health-events-analyzer' && event.isFatal == true"
+
+      [[rule-sets.match.all]]
+        kind = "Node"
+        expression = "!('k8saas.nvidia.com/ManagedByNVSentinel' in node.metadata.labels && node.metadata.labels['k8saas.nvidia.com/ManagedByNVSentinel'] == \"false\") && !('nvsentinel.dgxc.nvidia.com/managed' in node.metadata.labels && node.metadata.labels['nvsentinel.dgxc.nvidia.com/managed'] == \"false\")"
+
+      [rule-sets.cordon]
+        shouldCordon = true
+    [[rule-sets]]
+      enabled = true
+      version = "1"
+      name = "MaintenanceRequest ruleset"
+      priority = 0
+
+      [[rule-sets.match.all]]
+        kind = "HealthEvent"
+        expression = "event.agent == 'lifecycle-manager' && event.metadata != null && 'maintenanceRequestName' in event.metadata"
 
       [[rule-sets.match.all]]
         kind = "Node"

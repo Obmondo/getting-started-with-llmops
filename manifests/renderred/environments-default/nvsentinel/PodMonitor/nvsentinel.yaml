@@ -5,9 +5,9 @@ metadata:
     app.kubernetes.io/instance: nvsentinel
     app.kubernetes.io/managed-by: Helmraiser
     app.kubernetes.io/name: nvsentinel
-    app.kubernetes.io/version: v1.18.0
+    app.kubernetes.io/version: v1.33.0
     app.tanka.grafana.com: nvsentinel
-    helm.sh/chart: nvsentinel-v1.18.0
+    helm.sh/chart: nvsentinel-v1.33.0
   name: nvsentinel
   namespace: nvsentinel
 spec:

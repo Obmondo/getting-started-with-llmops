@@ -1,0 +1,66 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: hami/hami-dra-webhook-serving-cert
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: hami
+  name: hami-validatingwebhookconfiguration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: hami-dra-webhook
+      namespace: hami
+      path: /validate
+  failurePolicy: Ignore
+  name: validate.hami.io
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - hami
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - DELETE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: NoneOnDryRun
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: hami-dra-webhook
+      namespace: hami
+      path: /validate-volcano
+  failurePolicy: Ignore
+  name: validate-volcano.hami.io
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - hami
+  rules:
+  - apiGroups:
+    - batch.volcano.sh
+    apiVersions:
+    - v1alpha1
+    operations:
+    - DELETE
+    resources:
+    - jobs
+    scope: '*'
+  sideEffects: NoneOnDryRun
+  timeoutSeconds: 10

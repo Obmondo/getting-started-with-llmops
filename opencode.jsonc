@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  
+  // Both endpoints come from port-forwards, so each needs one running :
+  //
+  //   kubectl -n kserve    port-forward svc/gemma4-12b-kserve-workload-svc 8000:8000
+  //   kubectl -n hindsight port-forward svc/hindsight-api                  8888:8888
+  
+  // vLLM is one of the runtimes opencode probes on its own, at http://127.0.0.1:8000/v1, which is
+  // where the forward puts the in-cluster server. Discovery checks /health, then /v1/models.
+  "providers": {
+    "vllm": {
+      "settings": {
+        "baseURL": "http://127.0.0.1:8000/v1"
+      },
+  
+      // The server reports the model as `google/gemma-4-12B-it-qat-w4a16-ct`, which cannot be used
+      // in a `provider/model` reference as it is - the slash makes the reference ambiguous.
+      // modelID carries the real id upstream while the map key stays a single segment.
+      "models": {
+        "gemma4-12b": {
+          "name": "Gemma 4 12B",
+          "modelID": "google/gemma-4-12B-it-qat-w4a16-ct"
+        }
+      }
+    }
+  },
+  
+  "model": "vllm/gemma4-12b",
+  "show_edits": true,
+  
+  "mcp": {
+    "servers": {
+      // Hindsight's MCP server is built into hindsight-api and "enabled by default and mounted at
+      // /mcp". The bank is taken from the URL path ahead of the X-Bank-Id header and the
+      // HINDSIGHT_MCP_BANK_ID default, so naming it here pins which memory bank the session uses.
+      "hindsight": {
+        "type": "remote",
+        "url": "http://127.0.0.1:8888/mcp/default/",
+  
+        // Remote servers attempt OAuth unless this is false. This deployment sets no tenant
+        // extension, so "the MCP endpoint is open (no authentication required)" and there is no
+        // Authorization header to send. Setting HINDSIGHT_API_TENANT_API_KEY on hindsight-api
+        // would mean adding `"headers": { "Authorization": "Bearer {env:HINDSIGHT_API_KEY}" }`.
+        "oauth": false
+      }
+    }
+  }
+}

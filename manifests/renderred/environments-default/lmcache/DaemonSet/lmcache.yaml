@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.tanka.grafana.com: lmcache
+  name: lmcache
+  namespace: lmcache
+spec:
+  selector:
+    matchLabels:
+      app: lmcache
+  template:
+    metadata:
+      annotations:
+        nvidia.cdi.k8s.io/container.lmcache: management.nvidia.com/gpu=all
+      labels:
+        app: lmcache
+    spec:
+      containers:
+      - command:
+        - /opt/venv/bin/lmcache
+        - server
+        - --http-host
+        - 0.0.0.0
+        - --l1-size-gb
+        - "6"
+        image: lmcache/standalone:v0.5.8
+        livenessProbe:
+          httpGet:
+            path: /healthcheck
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        name: lmcache
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /healthcheck
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: "8"
+            memory: 22
+          requests:
+            cpu: "4"
+            memory: 11
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dev-shm
+      hostNetwork: true
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      volumes:
+      - hostPath:
+          path: /dev/shm
+          type: Directory
+        name: dev-shm

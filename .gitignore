@@ -9,4 +9,4 @@ manifests/charts/
 manifests/dist/
 vendor/
 
-kubeconfig.yaml
+*kubeconfig*

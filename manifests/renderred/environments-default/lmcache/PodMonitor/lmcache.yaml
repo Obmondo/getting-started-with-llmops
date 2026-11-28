@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    app.tanka.grafana.com: lmcache
+  name: lmcache
+  namespace: lmcache
+spec:
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /metrics
+    port: http
+  selector:
+    matchLabels:
+      app: lmcache

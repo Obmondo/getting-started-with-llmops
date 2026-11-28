@@ -41,10 +41,7 @@
               (
                 { config, ... }:
                 {
-                  # KubeOne writes the cluster's kubeconfig to the working directory. Pointing
-                  # KUBECONFIG at it from devenv.root (rather than a relative path) means kubectl
-                  # finds the cluster from any subdirectory of the repository.
-                  env.KUBECONFIG = "${config.devenv.root}/kubeconfig.yaml";
+                  env.KUBECONFIG = "${config.devenv.root}/manifests/environments/default/learning-llms-kubeconfig";
 
                   packages = with pkgs; [
                     kubeone
@@ -57,6 +54,8 @@
                     # nixos-25.11 is the most recent nixpkgs branch still shipping Helm v3.
                     (import inputs.nixpkgs-25_11 { inherit system; }).kubernetes-helm
                     tanka
+
+                    opencode
                   ];
                 }
               )

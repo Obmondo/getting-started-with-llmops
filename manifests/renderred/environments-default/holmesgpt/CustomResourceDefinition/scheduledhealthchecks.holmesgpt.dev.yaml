@@ -1,0 +1,206 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: holmesgpt
+  name: scheduledhealthchecks.holmesgpt.dev
+  namespace: holmesgpt
+spec:
+  group: holmesgpt.dev
+  names:
+    kind: ScheduledHealthCheck
+    listKind: ScheduledHealthCheckList
+    plural: scheduledhealthchecks
+    shortNames:
+    - shc
+    singular: scheduledhealthcheck
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Cron schedule
+      jsonPath: .spec.schedule
+      name: Schedule
+      type: string
+    - description: Whether the schedule is enabled
+      jsonPath: .spec.enabled
+      name: Enabled
+      type: boolean
+    - description: Last execution time
+      jsonPath: .status.lastScheduleTime
+      name: Last Run
+      type: date
+    - description: Result of last execution
+      jsonPath: .status.lastResult
+      name: Last Result
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              destinations:
+                description: Alert destinations for failed checks (only used in alert
+                  mode)
+                items:
+                  properties:
+                    config:
+                      description: Destination-specific configuration
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    type:
+                      description: Destination type (e.g., 'slack', 'pagerduty')
+                      type: string
+                  required:
+                  - type
+                  type: object
+                type: array
+              enabled:
+                default: true
+                description: Whether the schedule is enabled
+                type: boolean
+              mode:
+                default: monitor
+                description: 'Execution mode: ''alert'' sends notifications on failure,
+                  ''monitor'' logs only'
+                enum:
+                - alert
+                - monitor
+                type: string
+              model:
+                description: Override default LLM model for this check
+                type: string
+              query:
+                description: Natural language question about system health
+                maxLength: 5000
+                minLength: 1
+                type: string
+              schedule:
+                description: Cron expression for recurring execution (e.g., '*/5 *
+                  * * *')
+                minLength: 1
+                pattern: ^.+$
+                type: string
+              timeout:
+                default: 30
+                description: Execution timeout in seconds
+                maximum: 300
+                minimum: 1
+                type: integer
+            required:
+            - schedule
+            - query
+            type: object
+          status:
+            properties:
+              active:
+                description: Currently running health checks
+                items:
+                  properties:
+                    name:
+                      description: Name of the HealthCheck resource
+                      type: string
+                    namespace:
+                      description: Namespace of the HealthCheck resource
+                      type: string
+                    startTime:
+                      description: When the check started
+                      format: date-time
+                      type: string
+                    uid:
+                      description: UID of the HealthCheck resource
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  - uid
+                  - startTime
+                  type: object
+                type: array
+              conditions:
+                description: Standard Kubernetes conditions
+                items:
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transitioned
+                      format: date-time
+                      type: string
+                    message:
+                      description: Human-readable message about the condition
+                      type: string
+                    reason:
+                      description: Machine-readable reason for the condition
+                      type: string
+                    status:
+                      description: 'Condition status: True, False, or Unknown'
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: Condition type (e.g., 'ScheduleRegistered', 'ExecutionFailed')
+                      type: string
+                  required:
+                  - type
+                  - status
+                  type: object
+                type: array
+              history:
+                description: Recent execution history (last N executions)
+                items:
+                  properties:
+                    checkName:
+                      description: Name of the HealthCheck resource
+                      type: string
+                    duration:
+                      description: Execution duration in seconds
+                      type: number
+                    executionTime:
+                      description: When the check was executed
+                      format: date-time
+                      type: string
+                    message:
+                      description: Result message
+                      type: string
+                    result:
+                      description: 'Check result: pass, fail, or error'
+                      enum:
+                      - pass
+                      - fail
+                      - error
+                      type: string
+                  required:
+                  - executionTime
+                  - result
+                  - checkName
+                  type: object
+                type: array
+              lastResult:
+                description: 'Result of the last execution: pass, fail, or error'
+                enum:
+                - pass
+                - fail
+                - error
+                type: string
+              lastScheduleTime:
+                description: Last time a check was scheduled
+                format: date-time
+                type: string
+              lastSuccessfulTime:
+                description: Last time a check passed
+                format: date-time
+                type: string
+              message:
+                description: Message from the last execution
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

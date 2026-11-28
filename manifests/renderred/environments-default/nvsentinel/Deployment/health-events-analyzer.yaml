@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0dd10110d1f5b3abcf4dd2e1d294382318131dd9f0fa63d0a01bb75cbb989600
+        checksum/config: 3cb3a59fd94a350a75e7c5d51dcd5fc1c620b4f337b158495474e9d79ff397ed
       labels:
         app.kubernetes.io/instance: nvsentinel
         app.kubernetes.io/managed-by: Helm
@@ -34,6 +34,9 @@ spec:
         - --metrics-port=2112
         - --tls-enabled=false
         - --processing-strategy=EXECUTE_REMEDIATION
+        - --workers=1
+        - --max-in-flight=1000
+        - --socket-token-path=/var/run/secrets/nvsentinel/platform-connector/token
         env:
         - name: LOG_LEVEL
           value: info
@@ -43,7 +46,10 @@ spec:
         - configMapRef:
             name: nvsentinel-datastore-config
             optional: true
-        image: ghcr.io/nvidia/nvsentinel/health-events-analyzer:v1.18.0
+        - secretRef:
+            name: health-events-database-owner-credentials
+            optional: false
+        image: ghcr.io/nvidia/nvsentinel/health-events-analyzer:v1.33.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -79,6 +85,9 @@ spec:
         - mountPath: /etc/config/config.toml
           name: config-volume
           subPath: config.toml
+        - mountPath: /var/run/secrets/nvsentinel/platform-connector
+          name: platform-connector-token
+          readOnly: true
         - mountPath: /var/run/
           name: var-run-vol
       restartPolicy: Always
@@ -90,18 +99,14 @@ spec:
             path: config.toml
           name: health-events-analyzer-config
         name: config-volume
+      - name: platform-connector-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: platform-connector.nvsentinel.nvidia.com
+              expirationSeconds: 3600
+              path: token
       - hostPath:
           path: /var/run/nvsentinel
           type: DirectoryOrCreate
         name: var-run-vol
-      - name: mongo-app-client-cert
-        secret:
-          items:
-          - key: tls.crt
-            path: tls.crt
-          - key: tls.key
-            path: tls.key
-          - key: ca.crt
-            path: ca.crt
-          optional: true
-          secretName: mongo-app-client-cert-secret

@@ -6,7 +6,8 @@ local Utils = import './utils.libsonnet';
 
 local app = 'nvsentinel';
 
-local healthEventsStoreName = 'health-events';
+local healthEventsStoreName = 'health-events',
+      healthEventsStoreOwnerSecretName = 'health-events-database-owner-credentials';
 
 local healthEventsStore = CloudNativePG.newCluster(healthEventsStoreName, app) + {
   cluster+: {
@@ -15,6 +16,8 @@ local healthEventsStore = CloudNativePG.newCluster(healthEventsStoreName, app) +
         initdb: {
           database: healthEventsStoreName,
           owner: app,
+
+          secret: { name: healthEventsStoreOwnerSecretName },
         },
       },
     },
@@ -29,10 +32,12 @@ local healthEventsStore = CloudNativePG.newCluster(healthEventsStoreName, app) +
     namespace: Kubernetes.core.v1.namespace.new(app),
 
     installation: Utils.withNamespace(app, Helm.template(app, Utils.chartsDir(app, std.thisFile), {
-      version: 'v1.18.0',
+      version: 'v1.33.0',
 
       namespace: app,
       createNamespace: false,
+
+      noHooks: true,
 
       values: {
         global: {
@@ -61,10 +66,7 @@ local healthEventsStore = CloudNativePG.newCluster(healthEventsStoreName, app) +
               sslmode: 'disable',
             },
 
-            auth: {
-              mechanism: 'scram',
-              existingSecret: healthEventsStoreName + '-app',
-            },
+            credentialsFromSecret: { name: healthEventsStoreOwnerSecretName },
           },
         },
 

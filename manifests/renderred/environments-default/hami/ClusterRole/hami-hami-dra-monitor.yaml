@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: hami
+  name: hami-hami-dra-monitor
+rules:
+- apiGroups:
+  - resource.k8s.io
+  resources:
+  - resourceslices
+  - resourceclaims
+  verbs:
+  - get
+  - list
+  - watch

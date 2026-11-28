@@ -37,7 +37,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kserve/kserve-localmodelnode-agent:v0.20.0
+        image: kserve/kserve-localmodelnode-agent:v0.21.0
         imagePullPolicy: IfNotPresent
         name: manager
         resources:

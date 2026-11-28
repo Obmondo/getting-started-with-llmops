@@ -1,0 +1,66 @@
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceService
+metadata:
+  labels:
+    app.tanka.grafana.com: gemma4
+  name: gemma4-12b
+  namespace: kserve
+spec:
+  model:
+    name: google/gemma-4-12B-it-qat-w4a16-ct
+    uri: hf://google/gemma-4-12B-it-qat-w4a16-ct
+  replicas: 1
+  template:
+    containers:
+    - args:
+      - --chat-template
+      - /vllm-workspace/examples/tool_chat_template_gemma4.jinja
+      - --max-model-len
+      - "262144"
+      - --kv-cache-dtype
+      - fp8
+      - --reasoning-parser
+      - gemma4
+      - --tool-call-parser
+      - gemma4
+      - --enable-auto-tool-choice
+      - --trust-remote-code
+      - --max-num-seqs
+      - "128"
+      - --no-async-scheduling
+      - --kv-transfer-config
+      - '''{"kv_connector":"LMCacheMPConnector","kv_role":"kv_both"}'''
+      env:
+      - name: PYTHONHASHSEED
+        value: "0"
+      image: vllm/vllm-openai:gemma4
+      name: main
+      resources:
+        limits:
+          cpu: "6"
+          memory: 32Gi
+          nvidia.com/gpucores: 60
+          nvidia.com/gpumem: 20000
+        requests:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpucores: 60
+          nvidia.com/gpumem: 20000
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      volumeMounts:
+      - mountPath: /home/.cache/vllm
+        name: torch-compile-cache
+      - mountPath: /dev/shm
+        name: dev-shm
+    dnsPolicy: ClusterFirstWithHostNet
+    hostNetwork: true
+    volumes:
+    - name: torch-compile-cache
+      persistentVolumeClaim:
+        claimName: gemma4-12b-torch-compile-cache
+    - hostPath:
+        path: /dev/shm
+        type: Directory
+      name: dev-shm

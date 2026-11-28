@@ -21,22 +21,42 @@ spec:
         app.kubernetes.io/instance: nvsentinel
         app.kubernetes.io/name: metadata-collector
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.deploy.client
+                operator: In
+                values:
+                - "true"
+            - matchExpressions:
+              - key: nvidia.com/gpu.deploy.client
+                operator: DoesNotExist
       containers:
       - args:
         - --output-path=/var/lib/nvsentinel/gpu_metadata.json
+        - --pod-mapper-enabled=true
+        - --pod-mapper-max-consecutive-failures=10
+        - --metrics-port=2112
         env:
         - name: NODE_NAME
           valueFrom:
             fieldRef:
               apiVersion: v1
               fieldPath: spec.nodeName
+        - name: LOG_LEVEL
+          value: info
         - name: KUBELET_HOST
           valueFrom:
             fieldRef:
               fieldPath: status.hostIP
-        image: ghcr.io/nvidia/nvsentinel/metadata-collector:v1.18.0
+        image: ghcr.io/nvidia/nvsentinel/metadata-collector:v1.33.0
         imagePullPolicy: IfNotPresent
         name: metadata-collector
+        ports:
+        - containerPort: 2112
+          name: metrics
         resources:
           limits:
             cpu: 500m

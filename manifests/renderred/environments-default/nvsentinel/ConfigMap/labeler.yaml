@@ -6,14 +6,54 @@ data:
     [[classes]]
     name = "gpu"
     enabled = true
-    groupingLabels = ["node.kubernetes.io/instance-type", "nvidia.com/gpu.product"]
-    currentExpression = '''
-    int(node.metadata.labels['nvidia.com/gpu.count'])
-    '''
 
     [classes.labels]
     current = "nvsentinel.dgxc.nvidia.com/gpu.count.current"
     expected = "nvsentinel.dgxc.nvidia.com/gpu.count.expected"
+
+    [[classes.sources]]
+    name = "dra"
+    resourceSliceDriver = "gpu.nvidia.com"
+    groupingLabels = ["node.kubernetes.io/instance-type"]
+    currentExpression = '''
+    sum(resourceSlices
+      .filter(rs, has(rs.spec.devices))
+      .map(rs, rs.spec.devices
+        .filter(d,
+          has(d.attributes) &&
+          'type' in d.attributes &&
+          has(d.attributes['type'].string) &&
+          d.attributes['type'].string == 'gpu'
+        )
+        .size()
+      ))
+    '''
+    groupingExpression = '''
+    resourceSlices
+      .map(rs, has(rs.spec.devices) ? rs.spec.devices : [])
+      .flatten()
+      .filter(d,
+        has(d.attributes) &&
+        'type' in d.attributes &&
+        has(d.attributes['type'].string) &&
+        d.attributes['type'].string == 'gpu' &&
+        'productName' in d.attributes &&
+        has(d.attributes['productName'].string)
+      )
+      .map(d, d.attributes['productName'].string)
+    '''
+
+    [[classes.sources]]
+    name = "gfd"
+    groupingLabels = ["node.kubernetes.io/instance-type", "nvidia.com/gpu.product"]
+    currentExpression = '''
+    has(node.status.allocatable) &&
+    node.status.allocatable.exists(r,
+      (r == 'nvidia.com/gpu' || r == 'nvidia.com/gpu.shared' || r.startsWith('nvidia.com/mig-')) &&
+      int(node.status.allocatable[r]) > 0)
+      ? int(node.metadata.labels['nvidia.com/gpu.count'])
+      : -1
+    '''
 
     [[classes]]
     name = "nic"

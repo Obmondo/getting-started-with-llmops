@@ -1,8 +1,9 @@
 apiVersion: v1
 data:
-  config.toml: |2
+  config.toml: |
+    ruleMatchedEntityMetricEnabled = false
 
-    # The node condition for these rules needs to be removed manually because health-events-analyzer does not publish healthy events to clear it.
+    # Default rules do not enable annotation recovery. Without a recovery block, clear conditions manually.
     # Please run the command below to remove the node condition:
     # kubectl get node <NODE_NAME> -o json | jq '.status.conditions |= map(select(.type != "<NAME_OF_APPLIED_RULE>"))' | kubectl replace -f - --subresource=status
     [[rules]]
@@ -48,9 +49,10 @@ data:
 
     [[rules]]
     name = "RepeatedXIDErrorOnSameGPU"
-    description = "Detect occurrence of fatal XIDs 5 times within 24 hours where the burst window is 3 minutes and sticky XIDs window is 3 hours"
+    description = "Detect occurrence of XID errors (any XID except 45 and those the Xid catalogue resolves as IGNORE or RESTART_APP, other than 157 and 161) on the same GPU 5 times within 24 hours where the burst window is 3 minutes and sticky XIDs window is 3 hours"
     recommended_action = "CONTACT_SUPPORT"
     evaluate_rule = true
+    when = "event.checkName == 'SysLogsXIDError' && (size(event.errorCode) == 0 || !(event.errorCode[0] in ['8', '11', '13', '14', '25', '31', '32', '37', '38', '39', '40', '41', '43', '44', '45', '60', '63', '66', '67', '68', '69', '70', '71', '72', '75', '76', '77', '80', '82', '83', '84', '85', '86', '88', '89', '92', '93', '94', '96', '97', '98', '99', '100', '101', '102', '103', '104', '105', '106', '107', '108', '121', '126', '127', '128', '129', '130', '131', '132', '133', '134', '135', '137', '139', '141', '152', '153', '160']))"
     stage = [
       '''
       {
@@ -83,12 +85,7 @@ data:
           "$expr": {
             "$and": [
               {"$eq": ["this.healthevent.checkname", "SysLogsXIDError"]},
-              {
-                "$ne": [
-                  "this.healthevent.errorcode.0",
-                  "31"
-                ]
-              }
+              {"$not": [{"$in": ["this.healthevent.errorcode.0", ["8", "11", "13", "14", "25", "31", "32", "37", "38", "39", "40", "41", "43", "44", "45", "60", "63", "66", "67", "68", "69", "70", "71", "72", "75", "76", "77", "80", "82", "83", "84", "85", "86", "88", "89", "92", "93", "94", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "121", "126", "127", "128", "129", "130", "131", "132", "133", "134", "135", "137", "139", "141", "152", "153", "160"]]}]}
             ]
           }
         }
@@ -96,6 +93,14 @@ data:
       ''',
       # Candidate docs must also be XID events so non-XID unhealthy events on
       # the same node are not merged into GPU burst counts.
+      #
+      # Excluded codes: every XID whose Xid catalogue immediate action is IGNORE ("No Action
+      # required") or RESTART_APP ("RESET_GPU or RESTART_BM is not deemed necessary"), so a
+      # crash-looping application repeating them does not escalate a healthy GPU; 31 and 13
+      # also have their own dedicated rules. 157 (resource retirement failure) and 161 (channel
+      # retirement failure) are IGNORE but stay counted: a repeat means repairs keep failing. 45 is preemptive channel cleanup that the Xid
+      # catalogue resolves as "Not Solo: IGNORE (follow other Xid)", and a repeat is never solo.
+      # Keep this list, the when condition and the gate stage above in sync.
       '''
       {
         "$match": {
@@ -104,7 +109,7 @@ data:
           "healthevent.nodename": "this.healthevent.nodename",
           "$expr": {
             "$and": [
-              {"$ne": [{"$arrayElemAt": ["$healthevent.errorcode", 0]}, "31"]},
+              {"$not": [{"$in": [{"$arrayElemAt": ["$healthevent.errorcode", 0]}, ["8", "11", "13", "14", "25", "31", "32", "37", "38", "39", "40", "41", "43", "44", "45", "60", "63", "66", "67", "68", "69", "70", "71", "72", "75", "76", "77", "80", "82", "83", "84", "85", "86", "88", "89", "92", "93", "94", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "121", "126", "127", "128", "129", "130", "131", "132", "133", "134", "135", "137", "139", "141", "152", "153", "160"]]}]},
               {
                 "$gt": [
                   {
@@ -170,13 +175,23 @@ data:
         }
       }
       ''',
+      # Only the most recent previous sticky XID can satisfy the 3 hour bound, so a
+      # scalar $max over the same window answers the question without materialising
+      # every previous event. Pushing $$ROOT made this stage quadratic in both data
+      # and work; see issue #1851.
       '''
       {
         "$setWindowFields": {
           "sortBy": {"healthevent.generatedtimestamp.seconds": 1},
           "output": {
-            "allPreviousEvents": {
-              "$push": "$$ROOT",
+            "lastStickyTimestamp": {
+              "$max": {
+                "$cond": {
+                  "if": "$isStickyXid",
+                  "then": "$healthevent.generatedtimestamp.seconds",
+                  "else": null
+                }
+              },
               "window": {"documents": ["unbounded", -1]}
             }
           }
@@ -190,23 +205,10 @@ data:
             "$cond": {
               "if": "$isStickyXid",
               "then": {
-                "$anyElementTrue": {
-                  "$map": {
-                    "input": "$allPreviousEvents",
-                    "as": "prevEvent",
-                    "in": {
-                      "$and": [
-                        {
-                          "$in": [
-                            {"$arrayElemAt": ["$$prevEvent.healthevent.errorcode", 0]},
-                            ["74", "79", "95", "109", "119"]
-                          ]
-                        },
-                        {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$$prevEvent.healthevent.generatedtimestamp.seconds"]}, 10800]}
-                      ]
-                    }
-                  }
-                }
+                "$and": [
+                  {"$ne": ["$lastStickyTimestamp", null]},
+                  {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$lastStickyTimestamp"]}, 10800]}
+                ]
               },
               "else": false
             }
@@ -320,6 +322,7 @@ data:
     recommended_action = "RUN_DCGMEUD"
     message = "if DCGM EUD tests pass, run field diagnostics"
     evaluate_rule = true
+    when = "size(event.errorCode) > 0 && event.errorCode[0] == '31'"
     stage = [
       '''
       {
@@ -423,13 +426,23 @@ data:
         }
       }
       ''',
+      # Only the most recent previous sticky XID can satisfy the 3 hour bound, so a
+      # scalar $max over the same window answers the question without materialising
+      # every previous event. Pushing $$ROOT made this stage quadratic in both data
+      # and work; see issue #1851.
       '''
       {
         "$setWindowFields": {
           "sortBy": {"healthevent.generatedtimestamp.seconds": 1},
           "output": {
-            "allPreviousEvents": {
-              "$push": "$$ROOT",
+            "lastStickyTimestamp": {
+              "$max": {
+                "$cond": {
+                  "if": "$isStickyXid",
+                  "then": "$healthevent.generatedtimestamp.seconds",
+                  "else": null
+                }
+              },
               "window": {"documents": ["unbounded", -1]}
             }
           }
@@ -443,23 +456,10 @@ data:
             "$cond": {
               "if": "$isStickyXid",
               "then": {
-                "$anyElementTrue": {
-                  "$map": {
-                    "input": "$allPreviousEvents",
-                    "as": "prevEvent",
-                    "in": {
-                      "$and": [
-                        {
-                          "$in": [
-                            {"$arrayElemAt": ["$$prevEvent.healthevent.errorcode", 0]},
-                            ["74", "79", "95", "109", "119"]
-                          ]
-                        },
-                        {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$$prevEvent.healthevent.generatedtimestamp.seconds"]}, 10800]}
-                      ]
-                    }
-                  }
-                }
+                "$and": [
+                  {"$ne": ["$lastStickyTimestamp", null]},
+                  {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$lastStickyTimestamp"]}, 10800]}
+                ]
               },
               "else": false
             }
@@ -573,6 +573,7 @@ data:
     message = "App passing bad data or using incorrect GPU methods; check error PID to identify source of the problem, if application is known good and problem persists, then contact support"
     recommended_action = "NONE"
     evaluate_rule = true
+    when = "size(event.errorCode) > 0 && event.errorCode[0] == '31'"
     stage = [
       '''
       {
@@ -672,6 +673,7 @@ data:
     message = "if DCGM EUD tests pass, run field diagnostics"
     recommended_action = "RUN_DCGMEUD"
     evaluate_rule = true
+    when = "size(event.errorCode) > 0 && event.errorCode[0] == '13'"
     stage = [
       '''
       {
@@ -775,13 +777,23 @@ data:
         }
       }
       ''',
+      # Only the most recent previous sticky XID can satisfy the 3 hour bound, so a
+      # scalar $max over the same window answers the question without materialising
+      # every previous event. Pushing $$ROOT made this stage quadratic in both data
+      # and work; see issue #1851.
       '''
       {
         "$setWindowFields": {
           "sortBy": {"healthevent.generatedtimestamp.seconds": 1},
           "output": {
-            "allPreviousEvents": {
-              "$push": "$$ROOT",
+            "lastStickyTimestamp": {
+              "$max": {
+                "$cond": {
+                  "if": "$isStickyXid",
+                  "then": "$healthevent.generatedtimestamp.seconds",
+                  "else": null
+                }
+              },
               "window": {"documents": ["unbounded", -1]}
             }
           }
@@ -795,23 +807,10 @@ data:
             "$cond": {
               "if": "$isStickyXid",
               "then": {
-                "$anyElementTrue": {
-                  "$map": {
-                    "input": "$allPreviousEvents",
-                    "as": "prevEvent",
-                    "in": {
-                      "$and": [
-                        {
-                          "$in": [
-                            {"$arrayElemAt": ["$$prevEvent.healthevent.errorcode", 0]},
-                            ["74", "79", "95", "109", "119"]
-                          ]
-                        },
-                        {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$$prevEvent.healthevent.generatedtimestamp.seconds"]}, 10800]}
-                      ]
-                    }
-                  }
-                }
+                "$and": [
+                  {"$ne": ["$lastStickyTimestamp", null]},
+                  {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$lastStickyTimestamp"]}, 10800]}
+                ]
               },
               "else": false
             }
@@ -980,6 +979,7 @@ data:
     message = "App passing bad data or using incorrect GPU methods; check error PID to identify source of the problem, if application is known good and problem persists, then contact support"
     recommended_action = "NONE"
     evaluate_rule = true
+    when = "size(event.errorCode) > 0 && event.errorCode[0] == '13'"
     stage = [
       '''
       {
@@ -1130,6 +1130,7 @@ data:
     message = "App passing bad data or using incorrect GPU methods; check error PID to identify source of the problem, if application is known good and problem persists, then contact support"
     recommended_action = "NONE"
     evaluate_rule = true
+    when = "size(event.errorCode) > 0 && event.errorCode[0] in ['13', '31']"
     stage = [
       '''
       {
@@ -1233,13 +1234,23 @@ data:
         }
       }
       ''',
+      # Only the most recent previous sticky XID can satisfy the 3 hour bound, so a
+      # scalar $max over the same window answers the question without materialising
+      # every previous event. Pushing $$ROOT made this stage quadratic in both data
+      # and work; see issue #1851.
       '''
       {
         "$setWindowFields": {
           "sortBy": {"healthevent.generatedtimestamp.seconds": 1},
           "output": {
-            "allPreviousEvents": {
-              "$push": "$$ROOT",
+            "lastStickyTimestamp": {
+              "$max": {
+                "$cond": {
+                  "if": "$isStickyXid",
+                  "then": "$healthevent.generatedtimestamp.seconds",
+                  "else": null
+                }
+              },
               "window": {"documents": ["unbounded", -1]}
             }
           }
@@ -1253,23 +1264,10 @@ data:
             "$cond": {
               "if": "$isStickyXid",
               "then": {
-                "$anyElementTrue": {
-                  "$map": {
-                    "input": "$allPreviousEvents",
-                    "as": "prevEvent",
-                    "in": {
-                      "$and": [
-                        {
-                          "$in": [
-                            {"$arrayElemAt": ["$$prevEvent.healthevent.errorcode", 0]},
-                            ["74", "79", "95", "109", "119"]
-                          ]
-                        },
-                        {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$$prevEvent.healthevent.generatedtimestamp.seconds"]}, 10800]}
-                      ]
-                    }
-                  }
-                }
+                "$and": [
+                  {"$ne": ["$lastStickyTimestamp", null]},
+                  {"$lte": [{"$subtract": ["$healthevent.generatedtimestamp.seconds", "$lastStickyTimestamp"]}, 10800]}
+                ]
               },
               "else": false
             }
@@ -1357,6 +1355,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (1 or 20) is set in register 0, unexpected error please open an NVBug"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -1400,7 +1399,7 @@ data:
                 "$map": {
                   "input": {
                     "$filter": {
-                      "input": "$healthevent.entitiesimpacted",
+                      "input": "this.healthevent.entitiesimpacted",
                       "cond": {
                         "$in": ["$$this.entitytype", ["REG0", "REG1", "REG2", "REG3", "REG4", "REG5", "REG6"]]
                       }
@@ -1439,12 +1438,42 @@ data:
           }
         }
         ''',
+        # Collapse to one document per GPU before the $lookup below. That
+        # sub-query reads only currentNodeName, which the mandatory first stage
+        # already pins to a single node, and gpuUuid. Every event on the same GPU
+        # therefore asks it the same question, so running it once per event makes
+        # cost grow with the square of the node's event rate. Grouping first caps
+        # the sub-queries at the number of GPUs on the node.
+        '''
+        {
+          "$group": {
+            "_id": {
+              "$arrayElemAt": [
+                {
+                  "$map": {
+                    "input": {
+                      "$filter": {
+                        "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
+                        "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
+                      }
+                    },
+                    "in": "$$this.entityvalue"
+                  }
+                },
+                0
+              ]
+            },
+            "doc": {"$first": "$$ROOT"}
+          }
+        }
+        ''',
+        # Restore the document shape the $lookup expects.
+        '{"$replaceRoot": {"newRoot": "$doc"}}',
         '''
         {
           "$lookup": {
             "from": "HealthEvents",
             "let": {
-              "currentEventId": "$_id",
               "currentNodeName": "$healthevent.nodename",
               "gpuUuid": {
                 "$arrayElemAt": [
@@ -1452,7 +1481,7 @@ data:
                     "$map": {
                       "input": {
                         "$filter": {
-                          "input": {"$ifNull": ["$healthevent.entitiesimpacted", []]},
+                          "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
                           "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
                         }
                       },
@@ -1474,7 +1503,6 @@ data:
                           {"$subtract": [{"$divide": [{"$toLong": "$$NOW"}, 1000]}, 86400]}
                         ]
                       },
-                      {"$ne": ["$_id", "$$currentEventId"]},
                       {"$eq": ["$healthevent.nodename", "$$currentNodeName"]},
                       {"$ne": [{"$arrayElemAt": ["$healthevent.errorcode", 0]}, "74"]},
                       {
@@ -1536,7 +1564,10 @@ data:
             }
           }
         }
-        '''
+        ''',
+        # The reconciler only tests whether the result is non-empty, so stop at
+        # the first match rather than returning every surviving document.
+        '{"$limit": 1}'
       ]
 
       [[rules]]
@@ -1545,6 +1576,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (4 or 5) is set in register 0 and its repeating on same NVLink and GPU, likely a HW issue with ECC/Parity"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -1717,6 +1749,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "Repeated non-fatal NIC driver kernel-log error of the same type on this node - auto-recovery is failing or hardware is unstable; investigate driver, firmware, cooling, power, or cabling"
       evaluate_rule = true
+      when = "event.agent == 'syslog-health-monitor' && event.checkName == 'SysLogsNICDriverError' && event.isFatal == false && event.isHealthy == false && size(event.errorCode) > 0 && event.errorCode[0] in ['netdev_watchdog', 'port_module_high_temp', 'pci_power_insufficient', 'module_unplugged', 'mlx5_tx_timeout_detected', 'mlx5_rx_timeout_detected']"
       stage = [
         '''
         {
@@ -1787,6 +1820,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "Repeated non-fatal NIC port degradation on the same port - counter has cleared and re-tripped, or multiple non-fatal counters are degrading; investigate physical layer, cable, optics, or adapter"
       evaluate_rule = true
+      when = "event.agent == 'nic-health-monitor' && event.isFatal == false && event.isHealthy == false && event.checkName in ['InfiniBandDegradationCheck', 'EthernetDegradationCheck']"
       stage = [
         '''
         {
@@ -1942,6 +1976,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (8, 9, 12, 16, 17, 24 or 28) is set in register 0 and its repeating on same GPU, could be a hardware issue, request to check link mechanical connections and run field diagnosis if issue persists"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2080,6 +2115,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (21 or 22) is set in register 0, could be a marginal SI (signal integrity) issue, request to check link mechanical connections and run field diagnosis if issue persists"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2123,7 +2159,7 @@ data:
                 "$map": {
                   "input": {
                     "$filter": {
-                      "input": "$healthevent.entitiesimpacted",
+                      "input": "this.healthevent.entitiesimpacted",
                       "cond": {
                         "$in": ["$$this.entitytype", ["REG0", "REG1", "REG2", "REG3", "REG4", "REG5", "REG6"]]
                       }
@@ -2162,12 +2198,42 @@ data:
           }
         }
         ''',
+        # Collapse to one document per GPU before the $lookup below. That
+        # sub-query reads only currentNodeName, which the mandatory first stage
+        # already pins to a single node, and gpuUuid. Every event on the same GPU
+        # therefore asks it the same question, so running it once per event makes
+        # cost grow with the square of the node's event rate. Grouping first caps
+        # the sub-queries at the number of GPUs on the node.
+        '''
+        {
+          "$group": {
+            "_id": {
+              "$arrayElemAt": [
+                {
+                  "$map": {
+                    "input": {
+                      "$filter": {
+                        "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
+                        "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
+                      }
+                    },
+                    "in": "$$this.entityvalue"
+                  }
+                },
+                0
+              ]
+            },
+            "doc": {"$first": "$$ROOT"}
+          }
+        }
+        ''',
+        # Restore the document shape the $lookup expects.
+        '{"$replaceRoot": {"newRoot": "$doc"}}',
         '''
         {
           "$lookup": {
             "from": "HealthEvents",
             "let": {
-              "currentEventId": "$_id",
               "currentNodeName": "$healthevent.nodename",
               "gpuUuid": {
                 "$arrayElemAt": [
@@ -2175,7 +2241,7 @@ data:
                     "$map": {
                       "input": {
                         "$filter": {
-                          "input": {"$ifNull": ["$healthevent.entitiesimpacted", []]},
+                          "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
                           "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
                         }
                       },
@@ -2197,7 +2263,6 @@ data:
                           {"$subtract": [{"$divide": [{"$toLong": "$$NOW"}, 1000]}, 86400]}
                         ]
                       },
-                      {"$ne": ["$_id", "$$currentEventId"]},
                       {"$eq": ["$healthevent.nodename", "$$currentNodeName"]},
                       {"$ne": [{"$arrayElemAt": ["$healthevent.errorcode", 0]}, "74"]},
                       {
@@ -2259,7 +2324,10 @@ data:
             }
           }
         }
-        '''
+        ''',
+        # The reconciler only tests whether the result is non-empty, so stop at
+        # the first match rather than returning every surviving document.
+        '{"$limit": 1}'
       ]
 
       [[rules]]
@@ -2268,6 +2336,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (27 or 29) is set in register 0 and its repeating on same GPU, unexpected error please open NVBug"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2401,6 +2470,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (0, 1, 2 or 6) is set in register 2 and its repeating on same NVLink and GPU, likely a HW issue with ECC/Parity"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2575,7 +2645,30 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "bit 13 is set in register 2, its an unexpected error please open an NVBug"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
+        '''
+        {
+          "$match": {
+            "$expr": {
+              "$and": [
+                {
+                  "$gte": [
+                    "$healthevent.generatedtimestamp.seconds",
+                    {"$subtract": ["this.healthevent.generatedtimestamp.seconds", 86400]}
+                  ]
+                },
+                {
+                  "$lte": [
+                    "$healthevent.generatedtimestamp.seconds",
+                    "this.healthevent.generatedtimestamp.seconds"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+        ''',
         '''
         {
           "$match": {
@@ -2630,6 +2723,7 @@ data:
           }
         }
         ''',
+        '{"$limit": 1}'
       ]
 
       [[rules]]
@@ -2638,6 +2732,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (16 or 19) is set in register 2 and its repeating on same GPU, request for field diagnosis"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2771,6 +2866,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (17 or 18) is set in register 2 and its repeating on same GPU, request for field diagnosis"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2904,6 +3000,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (16 or 17) is set in register 3, unexpected error please open an NVBug"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -2947,7 +3044,7 @@ data:
                 "$map": {
                   "input": {
                     "$filter": {
-                      "input": "$healthevent.entitiesimpacted",
+                      "input": "this.healthevent.entitiesimpacted",
                       "cond": {
                         "$in": ["$$this.entitytype", ["REG0", "REG1", "REG2", "REG3", "REG4", "REG5", "REG6"]]
                       }
@@ -2986,12 +3083,42 @@ data:
           }
         }
         ''',
+        # Collapse to one document per GPU before the $lookup below. That
+        # sub-query reads only currentNodeName, which the mandatory first stage
+        # already pins to a single node, and gpuUuid. Every event on the same GPU
+        # therefore asks it the same question, so running it once per event makes
+        # cost grow with the square of the node's event rate. Grouping first caps
+        # the sub-queries at the number of GPUs on the node.
+        '''
+        {
+          "$group": {
+            "_id": {
+              "$arrayElemAt": [
+                {
+                  "$map": {
+                    "input": {
+                      "$filter": {
+                        "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
+                        "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
+                      }
+                    },
+                    "in": "$$this.entityvalue"
+                  }
+                },
+                0
+              ]
+            },
+            "doc": {"$first": "$$ROOT"}
+          }
+        }
+        ''',
+        # Restore the document shape the $lookup expects.
+        '{"$replaceRoot": {"newRoot": "$doc"}}',
         '''
         {
           "$lookup": {
             "from": "HealthEvents",
             "let": {
-              "currentEventId": "$_id",
               "currentNodeName": "$healthevent.nodename",
               "gpuUuid": {
                 "$arrayElemAt": [
@@ -2999,7 +3126,7 @@ data:
                     "$map": {
                       "input": {
                         "$filter": {
-                          "input": {"$ifNull": ["$healthevent.entitiesimpacted", []]},
+                          "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
                           "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
                         }
                       },
@@ -3021,7 +3148,6 @@ data:
                           {"$subtract": [{"$divide": [{"$toLong": "$$NOW"}, 1000]}, 86400]}
                         ]
                       },
-                      {"$ne": ["$_id", "$$currentEventId"]},
                       {"$eq": ["$healthevent.nodename", "$$currentNodeName"]},
                       {"$ne": [{"$arrayElemAt": ["$healthevent.errorcode", 0]}, "74"]},
                       {
@@ -3083,7 +3209,10 @@ data:
             }
           }
         }
-        '''
+        ''',
+        # The reconciler only tests whether the result is non-empty, so stop at
+        # the first match rather than returning every surviving document.
+        '{"$limit": 1}'
       ]
 
       [[rules]]
@@ -3092,6 +3221,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "bit 18 is set in register 3, reset of fabric is required"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -3135,7 +3265,7 @@ data:
                 "$map": {
                   "input": {
                     "$filter": {
-                      "input": "$healthevent.entitiesimpacted",
+                      "input": "this.healthevent.entitiesimpacted",
                       "cond": {
                         "$in": ["$$this.entitytype", ["REG0", "REG1", "REG2", "REG3", "REG4", "REG5", "REG6"]]
                       }
@@ -3169,12 +3299,42 @@ data:
           }
         }
         ''',
+        # Collapse to one document per GPU before the $lookup below. That
+        # sub-query reads only currentNodeName, which the mandatory first stage
+        # already pins to a single node, and gpuUuid. Every event on the same GPU
+        # therefore asks it the same question, so running it once per event makes
+        # cost grow with the square of the node's event rate. Grouping first caps
+        # the sub-queries at the number of GPUs on the node.
+        '''
+        {
+          "$group": {
+            "_id": {
+              "$arrayElemAt": [
+                {
+                  "$map": {
+                    "input": {
+                      "$filter": {
+                        "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
+                        "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
+                      }
+                    },
+                    "in": "$$this.entityvalue"
+                  }
+                },
+                0
+              ]
+            },
+            "doc": {"$first": "$$ROOT"}
+          }
+        }
+        ''',
+        # Restore the document shape the $lookup expects.
+        '{"$replaceRoot": {"newRoot": "$doc"}}',
         '''
         {
           "$lookup": {
             "from": "HealthEvents",
             "let": {
-              "currentEventId": "$_id",
               "currentNodeName": "$healthevent.nodename",
               "gpuUuid": {
                 "$arrayElemAt": [
@@ -3182,7 +3342,7 @@ data:
                     "$map": {
                       "input": {
                         "$filter": {
-                          "input": {"$ifNull": ["$healthevent.entitiesimpacted", []]},
+                          "input": {"$ifNull": ["this.healthevent.entitiesimpacted", []]},
                           "cond": {"$eq": ["$$this.entitytype", "GPU_UUID"]}
                         }
                       },
@@ -3204,7 +3364,6 @@ data:
                           {"$subtract": [{"$divide": [{"$toLong": "$$NOW"}, 1000]}, 86400]}
                         ]
                       },
-                      {"$ne": ["$_id", "$$currentEventId"]},
                       {"$eq": ["$healthevent.nodename", "$$currentNodeName"]},
                       {"$ne": [{"$arrayElemAt": ["$healthevent.errorcode", 0]}, "74"]},
                       {
@@ -3266,7 +3425,10 @@ data:
             }
           }
         }
-        '''
+        ''',
+        # The reconciler only tests whether the result is non-empty, so stop at
+        # the first match rather than returning every surviving document.
+        '{"$limit": 1}'
       ]
 
       [[rules]]
@@ -3275,6 +3437,7 @@ data:
       recommended_action = "CONTACT_SUPPORT"
       message = "one of the bits (18, 19, 21, 22, 24, 25, 27, 28) is set in register 4 and its repeating on same NVLink, likely a HW issue with ECC/Parity"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {
@@ -3453,6 +3616,7 @@ data:
       recommended_action = "NONE"
       message = "one of the bits (20, 23, 26, 29) is set in register 4, request for field diagnosis if user jobs are interrupted or error occurs repeatedly"
       evaluate_rule = true
+      when = "size(event.errorCode) > 0 && event.errorCode[0] == '74'"
       stage = [
         '''
         {

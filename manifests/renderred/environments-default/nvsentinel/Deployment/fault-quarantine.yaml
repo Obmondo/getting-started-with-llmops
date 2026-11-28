@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b90ebe6a4c42571997122ce8cb83b9f5b1fed734a6d2c07248540f64925d4366
+        checksum/config: 27f6a9474859ad06b285ed4b5965ddfe528509bac7806e74e690834090322918
       labels:
         app.kubernetes.io/instance: nvsentinel
         app.kubernetes.io/name: fault-quarantine
@@ -33,6 +33,8 @@ spec:
         - --tls-enabled=false
         - --circuit-breaker-enabled=true
         - --gpu-node-label=nvidia.com/gpu.present=true
+        - --kube-api-qps=5
+        - --kube-api-burst=10
         env:
         - name: POD_NAME
           valueFrom:
@@ -50,7 +52,10 @@ spec:
         - configMapRef:
             name: nvsentinel-datastore-config
             optional: true
-        image: ghcr.io/nvidia/nvsentinel/fault-quarantine:v1.18.0
+        - secretRef:
+            name: health-events-database-owner-credentials
+            optional: false
+        image: ghcr.io/nvidia/nvsentinel/fault-quarantine:v1.33.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -67,7 +72,7 @@ spec:
         readinessProbe:
           failureThreshold: 3
           httpGet:
-            path: /healthz
+            path: /readyz
             port: metrics
           initialDelaySeconds: 5
           periodSeconds: 10
@@ -83,26 +88,11 @@ spec:
           runAsGroup: 1001
           runAsUser: 1001
         volumeMounts:
-        - mountPath: /etc/config/config.toml
+        - mountPath: /etc/config
           name: config-volume
-          subPath: config.toml
       restartPolicy: Always
       serviceAccountName: fault-quarantine
       volumes:
       - configMap:
-          items:
-          - key: config.toml
-            path: config.toml
           name: fault-quarantine
         name: config-volume
-      - name: mongo-app-client-cert
-        secret:
-          items:
-          - key: tls.crt
-            path: tls.crt
-          - key: tls.key
-            path: tls.key
-          - key: ca.crt
-            path: ca.crt
-          optional: true
-          secretName: mongo-app-client-cert-secret

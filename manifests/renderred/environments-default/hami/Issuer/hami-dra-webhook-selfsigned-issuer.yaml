@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app.kubernetes.io/component: hami-dra-webhook
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: hami
+  name: hami-dra-webhook-selfsigned-issuer
+  namespace: hami
+spec:
+  selfSigned: {}

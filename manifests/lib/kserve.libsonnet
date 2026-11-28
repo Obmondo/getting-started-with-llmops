@@ -4,7 +4,7 @@ local Kubernetes = import 'github.com/jsonnet-libs/k8s-libsonnet/1.32/main.libso
 local Utils = import './utils.libsonnet';
 
 local app = 'kserve',
-      version = 'v0.20.0';
+      version = 'v0.21.0';
 
 local localModelStorageClass = {
   apiVersion: 'storage.k8s.io/v1',
@@ -126,7 +126,7 @@ local localModelStorageClass = {
 
     installation: {
       crd: Helm.template('kserve-crd', Utils.chartsDir('kserve-crd', std.thisFile), {
-        version: 'v0.20.0',
+        version: 'v0.21.0',
 
         namespace: app,
         createNamespace: false,
@@ -267,9 +267,5 @@ local localModelStorageClass = {
     },
 
     localModelStorageClass: localModelStorageClass,
-
-    gemma4: {
-      '12b': import 'gemma4/12b.libsonnet',
-    },
   }),
 }

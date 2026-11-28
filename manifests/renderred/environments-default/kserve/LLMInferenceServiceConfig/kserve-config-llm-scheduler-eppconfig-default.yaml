@@ -1,0 +1,25 @@
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceServiceConfig
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helmraiser
+    app.tanka.grafana.com: kserve
+  name: kserve-config-llm-scheduler-eppconfig-default
+  namespace: kserve
+spec:
+  router:
+    scheduler:
+      config:
+        inline:
+          apiVersion: llm-d.ai/v1alpha1
+          kind: EndpointPickerConfig
+          plugins:
+          - type: approx-prefix-cache-producer
+          - type: inflight-load-producer
+          - type: prefix-cache-affinity-filter
+          - type: token-load-scorer
+          schedulingProfiles:
+          - name: default
+            plugins:
+            - pluginRef: prefix-cache-affinity-filter
+            - pluginRef: token-load-scorer

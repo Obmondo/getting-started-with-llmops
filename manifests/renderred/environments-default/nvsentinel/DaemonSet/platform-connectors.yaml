@@ -5,9 +5,9 @@ metadata:
     app.kubernetes.io/instance: nvsentinel
     app.kubernetes.io/managed-by: Helmraiser
     app.kubernetes.io/name: nvsentinel
-    app.kubernetes.io/version: v1.18.0
+    app.kubernetes.io/version: v1.33.0
     app.tanka.grafana.com: nvsentinel
-    helm.sh/chart: nvsentinel-v1.18.0
+    helm.sh/chart: nvsentinel-v1.33.0
   name: platform-connectors
   namespace: nvsentinel
 spec:
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4d8e1ab01aa6cafed102337e7409e487ed2dcd37916ac598475ce42059618732
+        checksum/config: b928439bf6323dc87df502375153b176a54bd74ffd1ca91126bfc8181109518c
       labels:
         app.kubernetes.io/instance: nvsentinel
         app.kubernetes.io/name: nvsentinel
@@ -43,13 +43,14 @@ spec:
           value: info
         - name: APP_NAME
           value: platform-connector
-        - name: POSTGRESQL_CLIENT_CERT_MOUNT_PATH
-          value: null
         envFrom:
         - configMapRef:
             name: nvsentinel-datastore-config
             optional: true
-        image: ghcr.io/nvidia/nvsentinel/platform-connectors:v1.18.0
+        - secretRef:
+            name: health-events-database-owner-credentials
+            optional: false
+        image: ghcr.io/nvidia/nvsentinel/platform-connectors:v1.33.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -94,6 +95,7 @@ spec:
         - mountPath: /etc/config/
           name: platform-connector-configmap
       serviceAccountName: platform-connectors
+      terminationGracePeriodSeconds: 45
       tolerations:
       - operator: Exists
       volumes:

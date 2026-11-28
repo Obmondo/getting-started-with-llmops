@@ -45,6 +45,7 @@ spec:
         - 2h
         - --cancellations-config
         - /etc/syslog-health-monitor/cancellations.toml
+        - --platform-connector-token-path=/var/run/secrets/nvsentinel/platform-connector/token
         env:
         - name: NODE_NAME
           valueFrom:
@@ -53,7 +54,7 @@ spec:
               fieldPath: spec.nodeName
         - name: LOG_LEVEL
           value: info
-        image: ghcr.io/nvidia/nvsentinel/syslog-health-monitor:v1.18.0
+        image: ghcr.io/nvidia/nvsentinel/syslog-health-monitor:v1.33.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -108,6 +109,9 @@ spec:
         - mountPath: /etc/syslog-health-monitor
           name: syslog-health-monitor-config
           readOnly: true
+        - mountPath: /var/run/secrets/nvsentinel/platform-connector
+          name: platform-connector-token
+          readOnly: true
       nodeSelector:
         nvsentinel.dgxc.nvidia.com/driver.installed: "true"
         nvsentinel.dgxc.nvidia.com/kata.enabled: "false"
@@ -141,6 +145,13 @@ spec:
           path: /proc
           type: Directory
         name: proc-vol
+      - name: platform-connector-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: platform-connector.nvsentinel.nvidia.com
+              expirationSeconds: 3600
+              path: token
   updateStrategy:
     rollingUpdate:
       maxUnavailable: 5%

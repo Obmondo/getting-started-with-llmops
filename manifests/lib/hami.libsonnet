@@ -73,7 +73,7 @@ local app = 'hami';
     namespace: Kubernetes.core.v1.namespace.new(app),
 
     installation: Helm.template(app, Utils.chartsDir('hami-dra', std.thisFile), {
-      version: '0.2.1',
+      version: '0.2.4',
 
       namespace: app,
       createNamespace: false,
@@ -84,6 +84,16 @@ local app = 'hami';
         monitor: {
           enabled: true,
           service: { type: 'ClusterIP' },
+        },
+
+        drivers: {
+          nvidia: {
+            // The chart defaults to NVIDIA DRA driver v0.1.1 which doesn't exist.
+            image: { tag: 'v0.2.0' },
+
+            // CDI compliant drivers are already installed by the GPU operator.
+            containerDriver: false,
+          },
         },
       },
     }),

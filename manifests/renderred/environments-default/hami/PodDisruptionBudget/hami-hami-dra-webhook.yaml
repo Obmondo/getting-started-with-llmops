@@ -1,0 +1,20 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: hami
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hami
+    app.kubernetes.io/version: 0.2.4
+    app.tanka.grafana.com: hami
+    helm.sh/chart: hami-dra
+  name: hami-hami-dra-webhook
+  namespace: hami
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: hami
+      app.kubernetes.io/name: hami

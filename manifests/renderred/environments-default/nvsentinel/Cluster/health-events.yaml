@@ -10,6 +10,8 @@ spec:
     initdb:
       database: health-events
       owner: nvsentinel
+      secret:
+        name: health-events-database-owner-credentials
   instances: 1
   storage:
     size: 5Gi

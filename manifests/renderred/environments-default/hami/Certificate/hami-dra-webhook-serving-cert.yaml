@@ -1,0 +1,23 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: hami
+    app.kubernetes.io/managed-by: Helmraiser
+    app.kubernetes.io/name: hami
+    app.kubernetes.io/version: 0.2.4
+    app.tanka.grafana.com: hami
+    helm.sh/chart: hami-dra
+  name: hami-dra-webhook-serving-cert
+  namespace: hami
+spec:
+  dnsNames:
+  - hami-dra-webhook.hami.svc
+  - hami-dra-webhook.hami.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: hami-dra-webhook-selfsigned-issuer
+  privateKey:
+    rotationPolicy: Never
+  secretName: hami-dra-webhook-tls
